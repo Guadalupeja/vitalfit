@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@import "@fullcalendar/common/main.css";
+@import "@fullcalendar/daygrid/main.css";
+@import "@fullcalendar/timegrid/main.css";
+
+@media print {
+  nav,
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  table {
+    width: 100% !important;
+    font-size: 12px !important;
+  }
+
+  .shadow-sm,
+  .shadow,
+  .rounded-xl {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  .border {
+    border-color: #ddd !important;
+  }
+}
