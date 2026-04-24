@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
         UsersSeeder::class,
         TreatmentSeeder::class,
         BranchSeeder::class,
+             TreatmentTypeSeeder::class,
 
     ]);
 

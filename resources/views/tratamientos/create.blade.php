@@ -2,23 +2,21 @@
 
 @section('title', ' | Nuevo tratamiento')
 @section('page_title', 'Nuevo tratamiento')
-@section('page_subtitle', 'Crear un tratamiento con tipo, duración y color.')
+@section('page_subtitle', 'Crear un tratamiento usando un tipo previamente definido.')
 
 @section('content')
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <div class="vf-card p-6">
         <form method="POST" action="{{ route('tratamientos.store') }}" class="space-y-6">
             @csrf
 
-            @include('tratamientos._form')
+            @include('tratamientos._form', ['treatmentTypes' => $treatmentTypes])
 
             <div class="flex items-center gap-2">
-                <a href="{{ route('tratamientos.index') }}"
-                   class="rounded-md border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">
+                <a href="{{ route('tratamientos.index') }}" class="vf-btn-secondary">
                     Cancelar
                 </a>
 
-                <button type="submit"
-                        class="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800">
+                <button type="submit" class="vf-btn-primary">
                     Guardar
                 </button>
             </div>

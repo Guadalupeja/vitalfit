@@ -1,47 +1,57 @@
 <x-guest-layout>
-    <!-- Session Status -->
-    <x-auth-session-status class="mb-4" :status="session('status')" />
+    <div class="min-h-screen flex items-center justify-center px-4" style="background-color: #F6F6F3;">
+        <div class="w-full max-w-md">
+            <div class="text-center mb-6">
+                <img
+                    src="{{ asset('img/brand/vitalfit-logo-main.png') }}"
+                    alt="VitalFit by Marisol Moreno"
+                    class="mx-auto h-20 w-auto"
+                >
+                <p class="mt-3 text-sm text-gray-600">
+                    Acceso al sistema interno
+                </p>
+            </div>
 
-    <form method="POST" action="{{ route('login') }}">
-        @csrf
+            <div class="vf-card p-6 sm:p-8">
+                <x-auth-session-status class="mb-4" :status="session('status')" />
 
-        <!-- Email Address -->
-        <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
+                @if ($errors->any())
+                    <div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 text-sm">
+                        <ul class="list-disc pl-5">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                <form method="POST" action="{{ route('login') }}" class="space-y-5">
+                    @csrf
+
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700">Correo</label>
+                        <input id="email" class="vf-input mt-1" type="email" name="email" value="{{ old('email') }}" required autofocus autocomplete="username">
+                    </div>
+
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+                        <input id="password" class="vf-input mt-1" type="password" name="password" required autocomplete="current-password">
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <label for="remember_me" class="inline-flex items-center gap-2 text-sm text-gray-600">
+                            <input id="remember_me" type="checkbox" class="rounded border-gray-300 text-[var(--vf-primary)] focus:ring-[var(--vf-primary)]" name="remember">
+                            <span>Recordarme</span>
+                        </label>
+                    </div>
+
+                    <div>
+                        <button type="submit" class="vf-btn-primary w-full">
+                            Iniciar sesión
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
-
-        <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="current-password" />
-
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
-        </div>
-
-        <!-- Remember Me -->
-        <div class="block mt-4">
-            <label for="remember_me" class="inline-flex items-center">
-                <input id="remember_me" type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember">
-                <span class="ms-2 text-sm text-gray-600">{{ __('Remember me') }}</span>
-            </label>
-        </div>
-
-        <div class="flex items-center justify-end mt-4">
-            @if (Route::has('password.request'))
-                <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('password.request') }}">
-                    {{ __('Forgot your password?') }}
-                </a>
-            @endif
-
-            <x-primary-button class="ms-3">
-                {{ __('Log in') }}
-            </x-primary-button>
-        </div>
-    </form>
+    </div>
 </x-guest-layout>

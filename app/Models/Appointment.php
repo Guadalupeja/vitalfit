@@ -7,7 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 class Appointment extends Model
 {
     protected $fillable = [
+        'branch_id',
         'patient_id',
+        'patient_package_id',
+        'patient_package_item_id',
         'treatment_id',
         'specialist_id',
         'created_by',
@@ -15,8 +18,6 @@ class Appointment extends Model
         'end_at',
         'status',
         'notes',
-        'patient_treatment_id',
-
     ];
 
     protected $casts = [
@@ -43,14 +44,19 @@ class Appointment extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
-    public function patientTreatment()
-{
-    return $this->belongsTo(\App\Models\PatientTreatment::class);
-}
-public function package()
-{
-    return $this->belongsTo(\App\Models\PatientTreatment::class, 'patient_treatment_id');
-}
 
+    public function branch()
+    {
+        return $this->belongsTo(\App\Models\Branch::class);
+    }
 
+    public function patientPackage()
+    {
+        return $this->belongsTo(\App\Models\PatientPackage::class, 'patient_package_id');
+    }
+
+    public function patientPackageItem()
+    {
+        return $this->belongsTo(\App\Models\PatientPackageItem::class, 'patient_package_item_id');
+    }
 }

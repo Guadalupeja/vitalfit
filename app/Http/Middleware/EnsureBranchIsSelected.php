@@ -9,6 +9,10 @@ class EnsureBranchIsSelected
 {
     public function handle(Request $request, Closure $next)
     {
+        if ($request->routeIs('branches.select') || $request->routeIs('branches.select.store')) {
+            return $next($request);
+        }
+
         if (!session()->has('current_branch_id')) {
             return redirect()->route('branches.select');
         }

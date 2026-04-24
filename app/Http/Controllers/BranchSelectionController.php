@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 
@@ -8,8 +9,12 @@ class BranchSelectionController extends Controller
 {
     public function show()
     {
-        /** @var \App\Models\User $user */
-        $user = auth()->user();
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+
+        if (!$user) {
+            abort(403);
+        }
 
         $branches = $user->branches()
             ->where('active', true)
@@ -31,8 +36,12 @@ class BranchSelectionController extends Controller
             'branch_id' => ['required', 'integer', 'exists:branches,id'],
         ]);
 
-        /** @var \App\Models\User $user */
-        $user = auth()->user();
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+
+        if (!$user) {
+            abort(403);
+        }
 
         $branchId = (int) $request->branch_id;
 

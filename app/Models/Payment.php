@@ -6,35 +6,35 @@ use Illuminate\Database\Eloquent\Model;
 
 class Payment extends Model
 {
-protected $fillable = [
-    'patient_id',
-    'patient_treatment_id',
-    'paid_at',
-    'amount',
-    'method',
-    'reference',
-    'note',
-    'receipt_path',
-    'created_by',
-];
+    protected $fillable = [
+        'branch_id',
+        'patient_id',
+        'patient_package_id',
+        'amount',
+        'method',
+        'paid_at',
+        'notes',
+        'receipt_path',
+        'created_by',
+    ];
 
     protected $casts = [
-        'paid_at' => 'datetime',
         'amount' => 'decimal:2',
+        'paid_at' => 'datetime',
     ];
 
     public function patient()
     {
         return $this->belongsTo(Patient::class);
     }
+
     public function package()
-{
-    return $this->belongsTo(\App\Models\PatientTreatment::class, 'patient_treatment_id');
-}
-public function creator()
-{
-    return $this->belongsTo(\App\Models\User::class, 'created_by');
-}
+    {
+        return $this->belongsTo(\App\Models\PatientPackage::class, 'patient_package_id');
+    }
 
-
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

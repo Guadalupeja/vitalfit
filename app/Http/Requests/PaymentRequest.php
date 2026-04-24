@@ -15,14 +15,24 @@ class PaymentRequest extends FormRequest
     {
         return [
             'patient_id' => ['required', 'integer', 'exists:patients,id'],
+            'patient_package_id' => ['required', 'integer', 'exists:patient_packages,id'],
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'method' => ['required', 'in:cash,card,transfer,other'],
             'paid_at' => ['required', 'date'],
-            'amount' => ['required', 'numeric', 'min:0.01', 'max:999999.99'],
-            'method' => ['required', 'string', 'in:cash,transfer,card'],
-            'reference' => ['nullable', 'string', 'max:255'],
-            'note' => ['nullable', 'string', 'max:2000'],
-            'patient_treatment_id' => ['nullable', 'integer', 'exists:patient_treatments,id'],
-            'receipt' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf,webp', 'max:4096'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'receipt' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf,webp', 'max:5120'],
+        ];
+    }
 
+    public function messages(): array
+    {
+        return [
+            'patient_id.required' => 'Debes seleccionar un paciente.',
+            'patient_package_id.required' => 'Debes seleccionar un paquete del paciente.',
+            'amount.required' => 'Debes capturar el monto.',
+            'amount.gt' => 'El monto debe ser mayor a 0.',
+            'method.required' => 'Debes seleccionar un método de pago.',
+            'paid_at.required' => 'Debes indicar la fecha del pago.',
         ];
     }
 }

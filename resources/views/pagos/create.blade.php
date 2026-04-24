@@ -2,112 +2,173 @@
 
 @section('title', ' | Registrar pago')
 @section('page_title', 'Registrar pago')
-@section('page_subtitle', 'Agregar un abono a un paciente.')
+@section('page_subtitle', 'Registrar abono y actualizar saldo del paciente.')
 
 @section('content')
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <form method="POST" action="{{ route('pagos.store') }}" enctype="multipart/form-data" class="space-y-5">
+    <div class="vf-card p-6">
+        @if ($errors->any())
+            <div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+                <p class="font-medium">Hay errores en el formulario:</p>
+                <ul class="mt-2 list-disc pl-5 text-sm">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        <form method="POST"
+              action="{{ route('pagos.store') }}"
+              enctype="multipart/form-data"
+              class="grid grid-cols-1 gap-4 md:grid-cols-2">
             @csrf
 
-{{-- Paciente --}}
-<div>
-  <label class="block text-sm font-medium text-gray-700">Paciente</label>
-  <select name="patient_id" id="patient_id"
-          class="mt-1 w-full rounded-md border-gray-300 focus:border-gray-900 focus:ring-gray-900">
-      <option value="">— Selecciona —</option>
-      @foreach($patients as $p)
-        <option value="{{ $p->id }}">{{ $p->full_name }}</option>
-      @endforeach
-  </select>
-</div>
-
-{{-- Paquete --}}
-<div>
-  <label class="block text-sm font-medium text-gray-700">Paquete del paciente</label>
-  <select id="patient_treatment_id" name="patient_treatment_id"
-          data-template-url="{{ route('api.pacientes.paquetes', ['patient' => 0]) }}"
-          class="mt-1 w-full rounded-md border-gray-300 focus:border-gray-900 focus:ring-gray-900">
-      <option value="">— Selecciona paciente primero —</option>
-  </select>
-  @error('patient_treatment_id')
-    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
-  @enderror
-</div>
-
-
-
-
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Fecha y hora</label>
-                    <input type="datetime-local" name="paid_at"
-                           value="{{ old('paid_at', now()->format('Y-m-d\\TH:i')) }}"
-                           class="mt-1 w-full rounded-md border-gray-300 focus:border-gray-900 focus:ring-gray-900">
-                    @error('paid_at') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Monto</label>
-                    <input type="number" step="0.01" min="0.01" name="amount"
-                           value="{{ old('amount') }}"
-                           class="mt-1 w-full rounded-md border-gray-300 focus:border-gray-900 focus:ring-gray-900">
-                    @error('amount') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
-                </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700">Paciente</label>
+                <select name="patient_id" id="patient_id" class="vf-input mt-1" required>
+                    <option value="">— Selecciona —</option>
+                    @foreach($patients as $patient)
+                        <option value="{{ $patient->id }}" @selected(old('patient_id') == $patient->id)>
+                            {{ $patient->full_name }}
+                        </option>
+                    @endforeach
+                </select>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Método</label>
-                    <select name="method"
-                            class="mt-1 w-full rounded-md border-gray-300 focus:border-gray-900 focus:ring-gray-900">
-                        <option value="cash" @selected(old('method')==='cash')>Efectivo</option>
-                        <option value="transfer" @selected(old('method')==='transfer')>Transferencia</option>
-                        <option value="card" @selected(old('method')==='card')>Tarjeta</option>
-                    </select>
-                    @error('method') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Referencia (opcional)</label>
-                    <input type="text" name="reference"
-                           value="{{ old('reference') }}"
-                           class="mt-1 w-full rounded-md border-gray-300 focus:border-gray-900 focus:ring-gray-900">
-                    @error('reference') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Nota (opcional)</label>
-                <textarea name="note" rows="3"
-                          class="mt-1 w-full rounded-md border-gray-300 focus:border-gray-900 focus:ring-gray-900">{{ old('note') }}</textarea>
-                @error('note') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
-            </div>
-
-
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Comprobante (opcional)</label>
-                <input type="file" name="receipt" accept=".jpg,.jpeg,.png,.pdf,.webp"
-                    class="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700">
-                @error('receipt') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
-                <p class="text-xs text-gray-500 mt-1">
-                    Formatos permitidos: JPG, PNG, WEBP o PDF. Máximo 4 MB.
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700">Paquete del paciente</label>
+                <select name="patient_package_id" id="patient_package_id" class="vf-input mt-1" required>
+                    <option value="">— Selecciona paciente primero —</option>
+                </select>
+                <p class="mt-1 text-xs text-gray-500">
+                    Solo se muestran paquetes activos disponibles del paciente.
                 </p>
             </div>
 
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Fecha y hora</label>
+                <input type="datetime-local"
+                       name="paid_at"
+                       value="{{ old('paid_at', now()->format('Y-m-d\TH:i')) }}"
+                       class="vf-input mt-1"
+                       required>
+            </div>
 
-            <div class="flex items-center gap-2">
-                <a href="{{ route('pagos.index') }}"
-                   class="rounded-md border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Monto</label>
+                <input type="number"
+                       step="0.01"
+                       min="0.01"
+                       name="amount"
+                       value="{{ old('amount') }}"
+                       class="vf-input mt-1"
+                       required>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Método</label>
+                <select name="method" class="vf-input mt-1" required>
+                    <option value="">— Selecciona —</option>
+                    <option value="cash" @selected(old('method') === 'cash')>Efectivo</option>
+                    <option value="transfer" @selected(old('method') === 'transfer')>Transferencia</option>
+                    <option value="card" @selected(old('method') === 'card')>Tarjeta</option>
+                    <option value="other" @selected(old('method') === 'other')>Otro</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Referencia (opcional)</label>
+                <input type="text"
+                       name="reference"
+                       value="{{ old('reference') }}"
+                       class="vf-input mt-1">
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700">Notas (opcional)</label>
+                <textarea name="notes" rows="3" class="vf-input mt-1">{{ old('notes') }}</textarea>
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700">Comprobante (opcional)</label>
+                <input type="file" name="receipt" class="vf-input mt-1">
+            </div>
+
+            <div class="md:col-span-2 flex items-center gap-2 pt-2">
+                <a href="{{ route('pagos.index') }}" class="vf-btn-secondary">
                     Cancelar
                 </a>
 
-                <button type="submit"
-                        class="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800">
-                    Guardar
+                <button type="submit" class="vf-btn-primary">
+                    Guardar pago
                 </button>
             </div>
         </form>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const patientSelect = document.getElementById('patient_id');
+    const packageSelect = document.getElementById('patient_package_id');
+
+    if (!patientSelect || !packageSelect) return;
+
+    const urlTemplate = @json(route('api.pacientes.paquetes_v2', ['patient' => 0]));
+    const oldPatientId = @json(old('patient_id'));
+    const oldPackageId = @json(old('patient_package_id'));
+
+    async function loadPackages(patientId, preselect = null) {
+        packageSelect.innerHTML = '<option value="">Cargando...</option>';
+        packageSelect.disabled = true;
+
+        if (!patientId) {
+            packageSelect.innerHTML = '<option value="">— Selecciona paciente primero —</option>';
+            return;
+        }
+
+        const url = urlTemplate.replace('/0', '/' + patientId);
+
+        try {
+            const res = await fetch(url, {
+                headers: { Accept: 'application/json' }
+            });
+
+            const items = await res.json();
+
+            if (!Array.isArray(items) || items.length === 0) {
+                packageSelect.innerHTML = '<option value="">— Sin paquetes activos disponibles —</option>';
+                return;
+            }
+
+            packageSelect.innerHTML = '<option value="">— Selecciona —</option>';
+
+            items.forEach((item) => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.label;
+                packageSelect.appendChild(option);
+            });
+
+            packageSelect.disabled = false;
+
+            if (preselect) {
+                packageSelect.value = String(preselect);
+            }
+        } catch (error) {
+            packageSelect.innerHTML = '<option value="">Error al cargar paquetes</option>';
+        }
+    }
+
+    patientSelect.addEventListener('change', () => {
+        loadPackages(patientSelect.value);
+    });
+
+    if (oldPatientId) {
+        patientSelect.value = oldPatientId;
+        loadPackages(oldPatientId, oldPackageId);
+    }
+});
+</script>
+@endpush

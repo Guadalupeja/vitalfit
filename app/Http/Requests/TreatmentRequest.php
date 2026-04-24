@@ -8,17 +8,16 @@ class TreatmentRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // luego lo amarramos a roles si quieres
+        return true;
     }
 
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'category' => ['required', 'string', 'in:faciales,aparatologia,esteticos,laser,nutricion,valoracion'],
+            'name' => ['required', 'string', 'max:150'],
+            'treatment_type_id' => ['required', 'integer', 'exists:treatment_types,id'],
             'duration_minutes' => ['required', 'integer', 'min:10', 'max:360'],
-            'color_hex' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'description' => ['nullable', 'string', 'max:2000'],
+            'description' => ['nullable', 'string'],
             'active' => ['nullable', 'boolean'],
         ];
     }
@@ -26,8 +25,13 @@ class TreatmentRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'category.in' => 'La categoría no es válida.',
-            'color_hex.regex' => 'El color debe estar en formato HEX, por ejemplo: #AABBCC.',
+            'name.required' => 'Debes capturar el nombre del tratamiento.',
+            'treatment_type_id.required' => 'Debes seleccionar el tipo de tratamiento.',
+            'treatment_type_id.exists' => 'El tipo de tratamiento seleccionado no existe.',
+            'duration_minutes.required' => 'Debes capturar la duración.',
+            'duration_minutes.integer' => 'La duración debe ser un número entero.',
+            'duration_minutes.min' => 'La duración mínima es de 10 minutos.',
+            'duration_minutes.max' => 'La duración máxima es de 360 minutos.',
         ];
     }
 }

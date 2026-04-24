@@ -18,12 +18,17 @@ class PatientRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:30'],
             'notes' => ['nullable', 'string', 'max:2000'],
 
-            'treatment_id' => ['nullable', 'integer', 'exists:treatments,id'],
-
-            'sessions_purchased' => ['required', 'integer', 'min:0', 'max:999'],
-            'package_total' => ['required', 'numeric', 'min:0', 'max:999999.99'],
+            'package_template_id' => ['nullable', 'integer', 'exists:package_templates,id'],
 
             'active' => ['nullable', 'boolean'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'full_name.required' => 'Debes capturar el nombre del paciente.',
+            'package_template_id.exists' => 'El paquete seleccionado no existe.',
         ];
     }
 }
