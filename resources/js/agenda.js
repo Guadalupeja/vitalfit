@@ -22,13 +22,12 @@ function setStartEndNowSuggestion(startAtEl, endAtEl) {
   const now = new Date();
   const mins = now.getMinutes();
   const rounded = mins < 30 ? 30 : 60;
+
   now.setMinutes(rounded === 60 ? 0 : 30, 0, 0);
   if (rounded === 60) now.setHours(now.getHours() + 1);
 
   startAtEl.value = toLocalInputValue(now);
-
-  const defaultEnd = addMinutes(now, 60);
-  endAtEl.value = toLocalInputValue(defaultEnd);
+  endAtEl.value = toLocalInputValue(addMinutes(now, 60));
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -40,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const csrf = dataEl.dataset.csrf;
   const eventsUrl = dataEl.dataset.eventsUrl;
   const patientPackagesUrlTemplate = dataEl.dataset.patientPackagesUrl;
+  const availableSpecialistsUrl = dataEl.dataset.availableSpecialistsUrl;
   const packageItemsUrlTemplate = dataEl.dataset.packageItemsUrl;
 
   const prefillPatientId = dataEl.dataset.prefillPatientId || '';
@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const patientId = document.getElementById('patient_id');
   const patientPackageId = document.getElementById('patient_package_id');
   const patientPackageItemId = document.getElementById('patient_package_item_id');
-  const treatmentId = document.getElementById('treatment_id');
+  const treatmentId = document.getElementById('treatment_id'); // oculto en Blade
   const specialistId = document.getElementById('specialist_id');
   const status = document.getElementById('status');
   const startAt = document.getElementById('start_at');
@@ -68,6 +68,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnOpenNewAppointment = document.getElementById('btnOpenNewAppointment');
 
   const submitBtn = form?.querySelector('button[type="submit"]');
+
+  const initialSpecialistOptions = Array.from(specialistId?.options || []).map((opt) => ({
+    value: opt.value,
+    text: opt.textContent,
+  }));
 
   function resetModalError() {
     modalError.textContent = '';
@@ -124,6 +129,67 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('[data-close="1"]').forEach((btn) => {
     btn.addEventListener('click', closeModal);
   });
+
+  async function refreshAvailableSpecialists({ preserveValue = null } = {}) {
+    if (!specialistId || !availableSpecialistsUrl || !startAt?.value || !endAt?.value) return;
+
+    const start = new Date(startAt.value);
+    const end = new Date(endAt.value);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+      return;
+    }
+
+    const url = new URL(availableSpecialistsUrl, window.location.origin);
+    url.searchParams.set('start_at', start.toISOString());
+    url.searchParams.set('end_at', end.toISOString());
+
+    if (appointmentId?.value) {
+      url.searchParams.set('appointment_id', appointmentId.value);
+    }
+
+    try {
+      const res = await fetch(url.toString(), {
+        headers: { Accept: 'application/json' },
+      });
+
+      const items = await res.json();
+
+      specialistId.innerHTML = '<option value="">— Selecciona —</option>';
+
+      if (!Array.isArray(items) || items.length === 0) {
+        showModalError('No hay especialistas disponibles para ese horario.');
+        return;
+      }
+
+      // No limpiamos otros mensajes críticos de paquetes si existen.
+      if (modalError.textContent === 'No hay especialistas disponibles para ese horario.') {
+        resetModalError();
+      }
+
+      items.forEach((item) => {
+        const opt = document.createElement('option');
+        opt.value = item.id;
+        opt.textContent = item.label || item.name;
+        specialistId.appendChild(opt);
+      });
+
+      if (preserveValue && items.some((item) => String(item.id) === String(preserveValue))) {
+        specialistId.value = String(preserveValue);
+      } else if (
+        specialistId.dataset.currentUserId &&
+        items.some((item) => String(item.id) === String(specialistId.dataset.currentUserId))
+      ) {
+        specialistId.value = String(specialistId.dataset.currentUserId);
+      } else if (items.length === 1) {
+        specialistId.value = String(items[0].id);
+      }
+    } catch (error) {
+      specialistId.innerHTML = initialSpecialistOptions
+        .map((opt) => `<option value="${opt.value}">${opt.text}</option>`)
+        .join('');
+    }
+  }
 
   async function loadPatientPackages(patientIdValue, preselectPackageId = null) {
     if (!patientPackageId) return false;
@@ -300,8 +366,10 @@ document.addEventListener('DOMContentLoaded', () => {
       treatmentId.disabled = true;
     }
 
-    if (specialistId?.dataset?.currentUserId) {
-      specialistId.value = specialistId.dataset.currentUserId;
+    if (specialistId) {
+      specialistId.innerHTML = initialSpecialistOptions
+        .map((opt) => `<option value="${opt.value}">${opt.text}</option>`)
+        .join('');
     }
 
     status.value = 'confirmed';
@@ -321,6 +389,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     resetModalError();
     openModal();
+
+    refreshAvailableSpecialists({
+      preserveValue: specialistId?.dataset?.currentUserId || null,
+    });
   }
 
   if (patientId && patientPackageId) {
@@ -334,21 +406,24 @@ document.addEventListener('DOMContentLoaded', () => {
       await loadPackageItems(patientPackageId.value);
     });
 
-patientPackageItemId.addEventListener('change', () => {
-  const opt = patientPackageItemId.options[patientPackageItemId.selectedIndex];
-  const treatmentIdFromItem = opt?.dataset?.treatmentId;
-  const duration = Number(opt?.dataset?.duration || 0);
+    patientPackageItemId.addEventListener('change', () => {
+      const opt = patientPackageItemId.options[patientPackageItemId.selectedIndex];
+      const treatmentIdFromItem = opt?.dataset?.treatmentId;
+      const duration = Number(opt?.dataset?.duration || 0);
 
-  if (treatmentIdFromItem && treatmentId) {
-    treatmentId.value = String(treatmentIdFromItem);
-  }
+      if (treatmentIdFromItem && treatmentId) {
+        treatmentId.value = String(treatmentIdFromItem);
+      } else if (treatmentId) {
+        treatmentId.value = '';
+      }
 
-  if (duration && startAt?.value && endAt) {
-    const startDate = new Date(startAt.value);
-    const suggestedEnd = addMinutes(startDate, duration);
-    endAt.value = toLocalInputValue(suggestedEnd);
-  }
-});
+      if (duration && startAt?.value && endAt) {
+        const startDate = new Date(startAt.value);
+        const suggestedEnd = addMinutes(startDate, duration);
+        endAt.value = toLocalInputValue(suggestedEnd);
+        refreshAvailableSpecialists({ preserveValue: specialistId.value || null });
+      }
+    });
   }
 
   if (treatmentId) {
@@ -363,9 +438,18 @@ patientPackageItemId.addEventListener('change', () => {
         const startDate = new Date(startAt.value);
         const suggestedEnd = addMinutes(startDate, duration);
         endAt.value = toLocalInputValue(suggestedEnd);
+        refreshAvailableSpecialists({ preserveValue: specialistId.value || null });
       }
     });
   }
+
+  startAt?.addEventListener('change', () => {
+    refreshAvailableSpecialists({ preserveValue: specialistId.value || null });
+  });
+
+  endAt?.addEventListener('change', () => {
+    refreshAvailableSpecialists({ preserveValue: specialistId.value || null });
+  });
 
   const calendar = new Calendar(calendarEl, {
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
@@ -400,6 +484,7 @@ patientPackageItemId.addEventListener('change', () => {
 
     eventClick: async (info) => {
       const ev = info.event;
+      const currentSpecialistId = ev.extendedProps?.specialist_id ?? null;
 
       appointmentId.value = ev.id;
       modalTitle.textContent = 'Editar cita';
@@ -412,7 +497,6 @@ patientPackageItemId.addEventListener('change', () => {
       btnCompleteAppointment?.classList.remove('hidden');
 
       patientId.value = ev.extendedProps?.patient_id ?? '';
-      specialistId.value = ev.extendedProps?.specialist_id ?? '';
       status.value = ev.extendedProps?.status ?? 'confirmed';
       notes.value = ev.extendedProps?.notes ?? '';
 
@@ -438,6 +522,10 @@ patientPackageItemId.addEventListener('change', () => {
       if (treatmentId) {
         treatmentId.value = ev.extendedProps?.treatment_id ?? '';
       }
+
+      await refreshAvailableSpecialists({
+        preserveValue: currentSpecialistId,
+      });
 
       openModal();
     },
@@ -513,6 +601,11 @@ patientPackageItemId.addEventListener('change', () => {
         false,
         'Debes seleccionar un tratamiento disponible dentro del paquete.'
       );
+      return;
+    }
+
+    if (!specialistId?.value) {
+      showModalError('Debes seleccionar un especialista disponible.');
       return;
     }
 
@@ -661,10 +754,6 @@ patientPackageItemId.addEventListener('change', () => {
     btnNoShow?.classList.add('hidden');
     btnCompleteAppointment?.classList.add('hidden');
 
-    if (specialistId?.dataset?.currentUserId) {
-      specialistId.value = specialistId.dataset.currentUserId;
-    }
-
     status.value = 'confirmed';
     notes.value = '';
 
@@ -677,6 +766,10 @@ patientPackageItemId.addEventListener('change', () => {
     if (packageLoaded && patientPackageId?.value) {
       await loadPackageItems(patientPackageId.value);
     }
+
+    await refreshAvailableSpecialists({
+      preserveValue: specialistId?.dataset?.currentUserId || null,
+    });
 
     openModal();
   }

@@ -9,6 +9,7 @@ use App\Models\PatientPackage;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class PagoController extends Controller
 {
@@ -102,6 +103,7 @@ class PagoController extends Controller
             'amount' => $data['amount'],
             'method' => $data['method'],
             'paid_at' => $data['paid_at'],
+            'reference' => $data['reference'] ?? null,
             'notes' => $data['notes'] ?? null,
             'receipt_path' => $data['receipt_path'] ?? null,
             'created_by' => $data['created_by'],
@@ -110,5 +112,88 @@ class PagoController extends Controller
         return redirect()
             ->route('pagos.index')
             ->with('success', 'Pago registrado correctamente.');
+    }
+
+    public function edit(Payment $pago)
+    {
+        abort_unless((int) $pago->branch_id === current_branch_id(), 404);
+
+        $patients = Patient::query()
+            ->where('branch_id', current_branch_id())
+            ->where('active', true)
+            ->orderBy('full_name')
+            ->get(['id', 'full_name']);
+
+        return view('pagos.edit', compact('pago', 'patients'));
+    }
+
+    public function update(PaymentRequest $request, Payment $pago)
+    {
+        abort_unless((int) $pago->branch_id === current_branch_id(), 404);
+
+        $data = $request->validated();
+
+        $patient = Patient::query()
+            ->where('branch_id', current_branch_id())
+            ->find($data['patient_id']);
+
+        if (! $patient) {
+            return back()
+                ->withErrors([
+                    'patient_id' => 'El paciente no pertenece a la sucursal activa.'
+                ])
+                ->withInput();
+        }
+
+        $package = PatientPackage::query()
+            ->where('branch_id', current_branch_id())
+            ->find($data['patient_package_id'] ?? null);
+
+        if (! $package || (int) $package->patient_id !== (int) $data['patient_id']) {
+            return back()
+                ->withErrors([
+                    'patient_package_id' => 'El paquete no pertenece al paciente seleccionado.'
+                ])
+                ->withInput();
+        }
+
+        $updateData = [
+            'patient_id' => $data['patient_id'],
+            'patient_package_id' => $data['patient_package_id'],
+            'amount' => $data['amount'],
+            'method' => $data['method'],
+            'paid_at' => $data['paid_at'],
+            'reference' => $data['reference'] ?? null,
+            'notes' => $data['notes'] ?? null,
+        ];
+
+        if ($request->hasFile('receipt')) {
+            if ($pago->receipt_path && Storage::disk('public')->exists($pago->receipt_path)) {
+                Storage::disk('public')->delete($pago->receipt_path);
+            }
+
+            $updateData['receipt_path'] = $request->file('receipt')->store('payment-receipts', 'public');
+        }
+
+        $pago->update($updateData);
+
+        return redirect()
+            ->route('pagos.index')
+            ->with('success', 'Pago actualizado correctamente.');
+    }
+
+    public function destroy(Payment $pago)
+    {
+        abort_unless((int) $pago->branch_id === current_branch_id(), 404);
+
+        if ($pago->receipt_path && Storage::disk('public')->exists($pago->receipt_path)) {
+            Storage::disk('public')->delete($pago->receipt_path);
+        }
+
+        $pago->delete();
+
+        return redirect()
+            ->route('pagos.index')
+            ->with('success', 'Pago eliminado correctamente.');
     }
 }

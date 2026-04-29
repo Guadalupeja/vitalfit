@@ -31,12 +31,14 @@ class AppointmentController extends Controller
                 ->orderBy('name')
                 ->get(['id', 'name', 'treatment_type_id', 'category', 'color_hex', 'duration_minutes']);
 
-        $specialists = User::query()
-            ->whereHas('branches', function ($q) {
-                $q->where('branches.id', current_branch_id());
-            })
-            ->orderBy('name')
-            ->get(['id', 'name', 'role']);
+$specialists = User::query()
+    ->where('active', true)
+    ->whereIn('role', ['admin', 'specialist'])
+    ->whereHas('branches', function ($q) {
+        $q->where('branches.id', current_branch_id());
+    })
+    ->orderBy('name')
+    ->get(['id', 'name', 'role']);
 
         $currentUserId = Auth::id();
 
@@ -58,6 +60,51 @@ class AppointmentController extends Controller
 
 
     }
+
+public function availableSpecialists(Request $request)
+{
+    $request->validate([
+        'start_at' => ['required', 'date'],
+        'end_at' => ['required', 'date', 'after:start_at'],
+        'appointment_id' => ['nullable', 'integer', 'exists:appointments,id'],
+    ]);
+
+    $startAt = $request->query('start_at');
+    $endAt = $request->query('end_at');
+    $appointmentId = $request->query('appointment_id');
+
+    $busySpecialistIds = Appointment::query()
+        ->where('branch_id', current_branch_id())
+        ->whereNotIn('status', ['cancelled', 'no_show'])
+        ->when($appointmentId, fn ($q) => $q->where('id', '!=', $appointmentId))
+        ->where('start_at', '<', $endAt)
+        ->where('end_at', '>', $startAt)
+        ->pluck('specialist_id');
+
+    $specialists = User::query()
+        ->where('active', true)
+        ->whereIn('role', ['admin', 'specialist'])
+        ->whereHas('branches', function ($q) {
+            $q->where('branches.id', current_branch_id());
+        })
+        ->whereNotIn('id', $busySpecialistIds)
+        ->orderBy('name')
+        ->get(['id', 'name', 'role']);
+
+    return response()->json(
+        $specialists->map(function ($user) {
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'role' => $user->role,
+                'label' => $user->role === 'admin'
+                    ? "{$user->name} (Admin)"
+                    : "{$user->name} (Especialista)",
+            ];
+        })->values()
+    );
+}
+
 
     public function events(Request $request)
     {

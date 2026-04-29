@@ -22,6 +22,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'active',
     ];
 
     /**
@@ -33,6 +34,12 @@ class User extends Authenticatable
         'password',
         'remember_token',
     ];
+
+    protected $casts = [
+    'email_verified_at' => 'datetime',
+    'password' => 'hashed',
+    'active' => 'boolean',
+];
 
     /**
      * Get the attributes that should be cast.
@@ -57,5 +64,19 @@ class User extends Authenticatable
             {
                 return $this->branches()->where('branches.id', $branchId)->exists();
             }
-    
+
+
+    public function isAdmin(): bool
+{
+    return $this->role === 'admin';
+}
+
+public function isSpecialist(): bool
+{
+    return $this->role === 'specialist';
+}
+    public function isActive(): bool
+{
+    return (bool) $this->active;
+}
 }

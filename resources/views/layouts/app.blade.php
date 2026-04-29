@@ -109,11 +109,12 @@
                     class="{{ $linkClass }} {{ request()->routeIs('pagos.*') ? 'vf-tab-active' : 'vf-tab-inactive' }}">
                         Pagos
                     </a>
-
-                    <a href="{{ route('tabla_semanal.index') }}"
-                    class="{{ $linkClass }} {{ request()->routeIs('tabla_semanal.*') ? 'vf-tab-active' : 'vf-tab-inactive' }}">
-                        Tabla semanal
-                    </a>
+@if(auth()->check() && auth()->user()->role === 'admin')
+    <a href="{{ route('tabla_semanal.index') }}"
+       class="{{ $linkClass }} {{ request()->routeIs('tabla_semanal.*') ? 'vf-tab-active' : 'vf-tab-inactive' }}">
+        Tabla semanal
+    </a>
+@endif
 
                     <a href="{{ route('tratamientos.index') }}"
                     class="{{ $linkClass }} {{ request()->routeIs('tratamientos.*') ? 'vf-tab-active' : 'vf-tab-inactive' }}">
@@ -128,6 +129,13 @@
                 class="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900">
                     Tipos de tratamiento
                 </a>
+                @if(auth()->check() && auth()->user()->isAdmin())
+    <a href="{{ route('usuarios.index') }}"
+       class="{{ $linkClass }} {{ request()->routeIs('usuarios.*') ? 'text-white' : 'vf-tab-inactive' }}"
+       @if(request()->routeIs('usuarios.*')) style="background-color: #2F4F3E;" @endif>
+        Usuarios
+    </a>
+@endif
 
                     @if($userBranchesCount > 1)
                         <a href="{{ route('branches.select') }}"

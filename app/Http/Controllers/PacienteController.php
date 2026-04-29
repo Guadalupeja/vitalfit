@@ -23,6 +23,7 @@ public function index(Request $request)
                     ->with([
                         'items.treatment:id,name,color_hex',
                     ])
+                    ->withSum('payments as total_paid', 'amount')
                     ->orderByRaw("
                         CASE 
                             WHEN status = 'active' THEN 0

@@ -14,6 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
     $middleware->alias([
         'role' => \App\Http\Middleware\RoleMiddleware::class,
         'branch.selected' => \App\Http\Middleware\EnsureBranchIsSelected::class,
+                    'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+        'active' => \App\Http\Middleware\EnsureUserIsActive::class,
+
     ]);
 })
 

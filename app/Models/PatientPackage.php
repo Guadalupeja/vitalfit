@@ -104,4 +104,11 @@ class PatientPackage extends Model
             ]);
         }
     }
+
+public function payments()
+{
+    return $this->hasMany(\App\Models\Payment::class, 'patient_package_id');
 }
+
+    }
+

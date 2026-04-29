@@ -15,6 +15,7 @@ use App\Http\Controllers\PatientPackageV2Controller;
 use App\Http\Controllers\PatientPackageV2ApiController;
 use App\Http\Controllers\PatientPackageItemApiController;
 use App\Http\Controllers\TreatmentTypeController;
+use App\Http\Controllers\UserController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -25,7 +26,7 @@ Route::get('/', function () {
 | Rutas autenticadas SIN sucursal seleccionada
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/seleccionar-sucursal', [BranchSelectionController::class, 'show'])
         ->name('branches.select');
 
@@ -38,7 +39,7 @@ Route::middleware(['auth'])->group(function () {
 | Rutas autenticadas CON sucursal seleccionada
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'branch.selected'])->group(function () {
+Route::middleware(['auth', 'active', 'branch.selected'])->group(function () {
     Route::get('/agenda', [AppointmentController::class, 'index'])->name('agenda.index');
 
     // API para FullCalendar
@@ -60,12 +61,17 @@ Route::middleware(['auth', 'branch.selected'])->group(function () {
         ->parameters(['pacientes' => 'paciente'])
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
 
-    Route::get('/pagos', [PagoController::class, 'index'])->name('pagos.index');
-    Route::get('/pagos/crear', [PagoController::class, 'create'])->name('pagos.create');
-    Route::post('/pagos', [PagoController::class, 'store'])->name('pagos.store');
+Route::get('/pagos', [PagoController::class, 'index'])->name('pagos.index');
+Route::get('/pagos/crear', [PagoController::class, 'create'])->name('pagos.create');
+Route::post('/pagos', [PagoController::class, 'store'])->name('pagos.store');
+Route::get('/pagos/{pago}/editar', [PagoController::class, 'edit'])->name('pagos.edit');
+Route::put('/pagos/{pago}', [PagoController::class, 'update'])->name('pagos.update');
+Route::delete('/pagos/{pago}', [PagoController::class, 'destroy'])->name('pagos.destroy');
 
-    Route::get('/tabla-semanal', [TablaSemanalController::class, 'index'])->name('tabla_semanal.index');
-
+    Route::middleware(['admin'])->group(function () {
+    Route::get('/tabla-semanal', [TablaSemanalController::class, 'index'])
+        ->name('tabla_semanal.index');
+});
     Route::resource('tratamientos', TreatmentController::class)
         ->parameters(['tratamientos' => 'tratamiento'])
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
@@ -114,6 +120,15 @@ Route::get('/api/paquetes-paciente/{patientPackage}/items', [PatientPackageItemA
 Route::resource('tipos-tratamiento', TreatmentTypeController::class)
     ->parameters(['tipos-tratamiento' => 'tipo_tratamiento'])
     ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+
+Route::middleware(['admin'])->group(function () {
+    Route::resource('usuarios', UserController::class)
+        ->parameters(['usuarios' => 'usuario'])
+        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+});
+
+Route::get('/api/agenda/available-specialists', [AppointmentController::class, 'availableSpecialists'])
+    ->name('agenda.available_specialists');
 
 });
 

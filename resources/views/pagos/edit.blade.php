@@ -1,8 +1,8 @@
 @extends('layouts.app')
 
-@section('title', ' | Registrar pago')
-@section('page_title', 'Registrar pago')
-@section('page_subtitle', 'Registrar abono y actualizar saldo del paciente.')
+@section('title', ' | Editar pago')
+@section('page_title', 'Editar pago')
+@section('page_subtitle', 'Corregir monto, fecha, método o paquete del paciente.')
 
 @section('content')
     <div class="vf-card p-6">
@@ -18,20 +18,24 @@
         @endif
 
         <form method="POST"
-              action="{{ route('pagos.store') }}"
+              action="{{ route('pagos.update', $pago) }}"
               enctype="multipart/form-data"
               class="space-y-6">
             @csrf
+            @method('PUT')
 
-            @include('pagos._form', ['patients' => $patients])
+            @include('pagos._form', [
+                'patients' => $patients,
+                'pago' => $pago
+            ])
 
             <div class="flex items-center gap-2 pt-2">
                 <a href="{{ route('pagos.index') }}" class="vf-btn-secondary">
-                    Cancelar
+                    Volver
                 </a>
 
                 <button type="submit" class="vf-btn-primary">
-                    Guardar pago
+                    Guardar cambios
                 </button>
             </div>
         </form>

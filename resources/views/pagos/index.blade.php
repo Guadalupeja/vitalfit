@@ -11,6 +11,18 @@
 @endsection
 
 @section('content')
+    @if(session('success'))
+        <div class="mb-4 rounded-xl border border-green-200 bg-green-50 p-4 text-green-700">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+            {{ session('error') }}
+        </div>
+    @endif
+
     <div class="vf-card">
         <div class="flex flex-col gap-4 border-b border-gray-200 p-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -52,7 +64,12 @@
                         <tbody class="divide-y">
                         @forelse($dailyByMethod as $row)
                             @php
-                                $labels = ['cash' => 'Efectivo', 'transfer' => 'Transferencia', 'card' => 'Tarjeta'];
+                                $labels = [
+                                    'cash' => 'Efectivo',
+                                    'transfer' => 'Transferencia',
+                                    'card' => 'Tarjeta',
+                                    'other' => 'Otro',
+                                ];
                             @endphp
                             <tr>
                                 <td class="py-3 pr-4">{{ $labels[$row->method] ?? $row->method }}</td>
@@ -87,18 +104,25 @@
                     <tr>
                         <th class="py-2 pr-4">Fecha</th>
                         <th class="py-2 pr-4">Paciente</th>
+                        <th class="py-2 pr-4">Paquete</th>
                         <th class="py-2 pr-4">Monto</th>
                         <th class="py-2 pr-4">Método</th>
                         <th class="py-2 pr-4">Referencia</th>
                         <th class="py-2 pr-4">Nota</th>
                         <th class="py-2 pr-4">Comprobante</th>
                         <th class="py-2 pr-4">Registró</th>
+                        <th class="py-2 pr-4">Acciones</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y">
                 @forelse($payments as $pay)
                     @php
-                        $labels = ['cash' => 'Efectivo', 'transfer' => 'Transferencia', 'card' => 'Tarjeta'];
+                        $labels = [
+                            'cash' => 'Efectivo',
+                            'transfer' => 'Transferencia',
+                            'card' => 'Tarjeta',
+                            'other' => 'Otro',
+                        ];
                     @endphp
                     <tr>
                         <td class="py-3 pr-4 text-gray-600">
@@ -106,6 +130,9 @@
                         </td>
                         <td class="py-3 pr-4 font-medium">
                             {{ $pay->patient?->full_name ?? '—' }}
+                        </td>
+                        <td class="py-3 pr-4 text-gray-600">
+                            {{ $pay->package?->name ?? '—' }}
                         </td>
                         <td class="py-3 pr-4 font-semibold">
                             ${{ number_format((float)$pay->amount, 2) }}
@@ -117,7 +144,7 @@
                             {{ $pay->reference ?? '—' }}
                         </td>
                         <td class="py-3 pr-4 text-gray-600">
-                            {{ $pay->note ?? '—' }}
+                            {{ $pay->notes ?? '—' }}
                         </td>
                         <td class="py-3 pr-4">
                             @if($pay->receipt_path)
@@ -131,10 +158,27 @@
                         <td class="py-3 pr-4 text-gray-600">
                             {{ $pay->creator?->name ?? '—' }}
                         </td>
+                        <td class="py-3 pr-4 whitespace-nowrap">
+                            <a href="{{ route('pagos.edit', $pay) }}"
+                               class="font-medium text-[var(--vf-primary)] hover:underline">
+                                Editar
+                            </a>
+
+                            <form action="{{ route('pagos.destroy', $pay) }}"
+                                  method="POST"
+                                  class="inline"
+                                  onsubmit="return confirm('¿Eliminar este pago?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="ml-3 font-medium text-red-600 hover:underline">
+                                    Eliminar
+                                </button>
+                            </form>
+                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="py-10 text-center text-gray-500">Aún no hay pagos.</td>
+                        <td colspan="10" class="py-10 text-center text-gray-500">Aún no hay pagos.</td>
                     </tr>
                 @endforelse
                 </tbody>

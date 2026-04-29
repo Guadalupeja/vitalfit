@@ -40,6 +40,10 @@
                     $patientType = $packagesCount <= 1 ? 'Nuevo' : 'Reactivado';
 
                     $lastAppointment = $patient->appointments->first();
+
+                    $packageTotal = (float) ($activePackage->package_total ?? 0);
+                    $packagePaid = (float) ($activePackage->total_paid ?? 0);
+                    $packageDue = max(0, $packageTotal - $packagePaid);
                 @endphp
 
                 <div class="grid grid-cols-1 gap-6 p-6 lg:grid-cols-[260px_1fr_240px]">
@@ -77,7 +81,30 @@
                                     <div class="text-right">
                                         <p class="text-xs text-gray-500">Total del paquete</p>
                                         <p class="font-semibold text-gray-900">
-                                            ${{ number_format((float) $activePackage->package_total, 2) }}
+                                            ${{ number_format($packageTotal, 2) }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+                                    <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                                        <p class="text-xs text-gray-500">Total</p>
+                                        <p class="mt-1 font-semibold text-gray-900">
+                                            ${{ number_format($packageTotal, 2) }}
+                                        </p>
+                                    </div>
+
+                                    <div class="rounded-lg border border-green-200 bg-green-50 p-3">
+                                        <p class="text-xs text-green-700">Abonado</p>
+                                        <p class="mt-1 font-semibold text-green-800">
+                                            ${{ number_format($packagePaid, 2) }}
+                                        </p>
+                                    </div>
+
+                                    <div class="rounded-lg border border-red-200 bg-red-50 p-3">
+                                        <p class="text-xs text-red-700">Adeudo</p>
+                                        <p class="mt-1 font-semibold text-red-800">
+                                            ${{ number_format($packageDue, 2) }}
                                         </p>
                                     </div>
                                 </div>
@@ -99,17 +126,17 @@
                                             </div>
 
                                             <div class="mt-3 grid grid-cols-3 gap-3 text-sm">
-                                                <div class="rounded-lg bg-white p-3 border border-gray-200">
+                                                <div class="rounded-lg border border-gray-200 bg-white p-3">
                                                     <p class="text-xs text-gray-500">Incluidas</p>
                                                     <p class="font-semibold text-gray-900">{{ $item->sessions_included }}</p>
                                                 </div>
 
-                                                <div class="rounded-lg bg-white p-3 border border-gray-200">
+                                                <div class="rounded-lg border border-gray-200 bg-white p-3">
                                                     <p class="text-xs text-gray-500">Usadas</p>
                                                     <p class="font-semibold text-gray-900">{{ $completed }}</p>
                                                 </div>
 
-                                                <div class="rounded-lg bg-white p-3 border border-gray-200">
+                                                <div class="rounded-lg border border-gray-200 bg-white p-3">
                                                     <p class="text-xs text-gray-500">Restantes</p>
                                                     <p class="font-semibold text-gray-900">{{ $remaining }}</p>
                                                 </div>
