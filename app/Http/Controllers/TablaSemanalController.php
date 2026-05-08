@@ -103,9 +103,9 @@ class TablaSemanalController extends Controller
                 });
             })
             ->sum('amount');
+$weeklyTopPackagesByIncome = $this->buildTopPackagesByIncome($weekStart, $weekEnd, $treatmentId);
+$monthlyTopPackagesByIncome = $this->buildTopPackagesByIncome($monthStart, $monthEnd, $treatmentId);
 
-        $weeklyTopTreatmentsByIncome = $this->buildTopTreatmentsByIncome($weekStart, $weekEnd, $treatmentId);
-        $monthlyTopTreatmentsByIncome = $this->buildTopTreatmentsByIncome($monthStart, $monthEnd, $treatmentId);
 
         $weeklyCompletedByTreatment = Appointment::query()
             ->where('appointments.branch_id', current_branch_id())
@@ -209,74 +209,44 @@ class TablaSemanalController extends Controller
             'status' => $status,
 
             'weeklyIncome' => $weeklyIncome,
-            'weeklyTopTreatmentsByIncome' => $weeklyTopTreatmentsByIncome,
-            'weeklyCompletedByTreatment' => $weeklyCompletedByTreatment,
+'weeklyTopPackagesByIncome' => $weeklyTopPackagesByIncome,           
+ 'weeklyCompletedByTreatment' => $weeklyCompletedByTreatment,
             'weeklyCancelledAppointments' => $weeklyCancelledAppointments,
 
             'monthStart' => $monthStart,
             'monthEnd' => $monthEnd,
             'monthlyIncome' => $monthlyIncome,
-            'monthlyTopTreatmentsByIncome' => $monthlyTopTreatmentsByIncome,
-            'monthlyCompletedByTreatment' => $monthlyCompletedByTreatment,
+'monthlyTopPackagesByIncome' => $monthlyTopPackagesByIncome,            
+ 'monthlyCompletedByTreatment' => $monthlyCompletedByTreatment,
             'monthlyCancelledAppointments' => $monthlyCancelledAppointments,
         ]);
     }
 
-    private function buildTopTreatmentsByIncome(Carbon $start, Carbon $end, ?string $treatmentId = null)
-    {
-        $payments = Payment::query()
-            ->where('branch_id', current_branch_id())
-            ->whereNotNull('patient_package_id')
-            ->whereBetween('paid_at', [$start, $end])
-            ->with([
-                'package.items.treatment:id,name',
-            ])
-            ->get();
-
-        $rows = collect();
-
-        foreach ($payments as $payment) {
-            $package = $payment->package;
-
-            if (! $package || $package->items->isEmpty()) {
-                continue;
-            }
-
-            $items = $package->items;
-
-            if ($treatmentId) {
-                $items = $items->where('treatment_id', (int) $treatmentId);
-            }
-
-            if ($items->isEmpty()) {
-                continue;
-            }
-
-            $totalSessions = max(1, (int) $items->sum('sessions_included'));
-
-            foreach ($items as $item) {
-                $allocatedAmount = ((float) $payment->amount) * ((int) $item->sessions_included / $totalSessions);
-
-                $rows->push([
-                    'id' => $item->treatment?->id,
-                    'name' => $item->treatment?->name ?? 'Tratamiento',
-                    'payments_count' => 1,
-                    'total_income' => $allocatedAmount,
-                ]);
-            }
-        }
-
-        return $rows
-            ->groupBy('id')
-            ->map(function ($group) {
-                return (object) [
-                    'id' => $group->first()['id'],
-                    'name' => $group->first()['name'],
-                    'payments_count' => $group->sum('payments_count'),
-                    'total_income' => $group->sum('total_income'),
-                ];
-            })
-            ->sortByDesc('total_income')
-            ->values();
-    }
+private function buildTopPackagesByIncome(Carbon $start, Carbon $end, ?string $treatmentId = null)
+{
+    return Payment::query()
+        ->where('payments.branch_id', current_branch_id())
+        ->whereNotNull('payments.patient_package_id')
+        ->whereBetween('payments.paid_at', [$start, $end])
+        ->join('patient_packages', 'patient_packages.id', '=', 'payments.patient_package_id')
+        ->when($treatmentId, function ($q) use ($treatmentId) {
+            $q->whereExists(function ($sub) use ($treatmentId) {
+                $sub->select(DB::raw(1))
+                    ->from('patient_package_items')
+                    ->whereColumn('patient_package_items.patient_package_id', 'patient_packages.id')
+                    ->where('patient_package_items.treatment_id', $treatmentId);
+            });
+        })
+        ->groupBy('patient_packages.name')
+        ->select([
+            DB::raw('MIN(patient_packages.id) as id'),
+            'patient_packages.name',
+            DB::raw('COUNT(payments.id) as payments_count'),
+            DB::raw('COUNT(DISTINCT patient_packages.id) as packages_count'),
+            DB::raw('SUM(payments.amount) as total_income'),
+        ])
+        ->orderByDesc('total_income')
+        ->limit(5)
+        ->get();
+}
 }

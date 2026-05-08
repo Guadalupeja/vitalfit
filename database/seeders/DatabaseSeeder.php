@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
         TreatmentSeeder::class,
         BranchSeeder::class,
              TreatmentTypeSeeder::class,
+       VitalFitDemoSeeder::class,
 
     ]);
 

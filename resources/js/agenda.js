@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const patientPackagesUrlTemplate = dataEl.dataset.patientPackagesUrl;
   const availableSpecialistsUrl = dataEl.dataset.availableSpecialistsUrl;
   const packageItemsUrlTemplate = dataEl.dataset.packageItemsUrl;
+  const destroyUrlTemplate = dataEl.dataset.destroyUrlTemplate;
 
   const prefillPatientId = dataEl.dataset.prefillPatientId || '';
   const prefillPackageId = dataEl.dataset.prefillPackageId || '';
@@ -62,10 +63,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const endAt = document.getElementById('end_at');
   const notes = document.getElementById('notes');
 
-  const btnCancelAppointment = document.getElementById('btnCancelAppointment');
-  const btnNoShow = document.getElementById('btnNoShow');
-  const btnCompleteAppointment = document.getElementById('btnCompleteAppointment');
-  const btnOpenNewAppointment = document.getElementById('btnOpenNewAppointment');
+const btnCancelAppointment = document.getElementById('btnCancelAppointment');
+const btnNewSameTimeAppointment = document.getElementById('btnNewSameTimeAppointment');
+const btnDeleteAppointment = document.getElementById('btnDeleteAppointment');
+const btnNoShow = document.getElementById('btnNoShow');
+const btnCompleteAppointment = document.getElementById('btnCompleteAppointment');
 
   const submitBtn = form?.querySelector('button[type="submit"]');
 
@@ -343,9 +345,11 @@ document.addEventListener('DOMContentLoaded', () => {
     modalTitle.textContent = 'Nueva cita';
     modalSubtitle.textContent = 'Se guardará el nombre de quien agendó.';
 
-    btnCancelAppointment?.classList.add('hidden');
-    btnNoShow?.classList.add('hidden');
-    btnCompleteAppointment?.classList.add('hidden');
+btnCancelAppointment?.classList.add('hidden');
+btnDeleteAppointment?.classList.add('hidden');
+btnNoShow?.classList.add('hidden');
+btnCompleteAppointment?.classList.add('hidden');
+btnNewSameTimeAppointment?.classList.add('hidden');
 
     if (patientId) patientId.value = '';
 
@@ -465,6 +469,8 @@ document.addEventListener('DOMContentLoaded', () => {
     selectable: true,
     editable: true,
     nowIndicator: true,
+        slotEventOverlap: false,
+    eventMaxStack: 3,
     slotMinTime: '07:00:00',
     slotMaxTime: '22:00:00',
     events: eventsUrl,
@@ -492,9 +498,11 @@ document.addEventListener('DOMContentLoaded', () => {
         ? `Agendada por: ${ev.extendedProps.creator_name}`
         : 'Editar información de la cita.';
 
-      btnCancelAppointment?.classList.remove('hidden');
-      btnNoShow?.classList.remove('hidden');
-      btnCompleteAppointment?.classList.remove('hidden');
+btnCancelAppointment?.classList.remove('hidden');
+btnNewSameTimeAppointment?.classList.remove('hidden');
+btnDeleteAppointment?.classList.remove('hidden');
+btnNoShow?.classList.remove('hidden');
+btnCompleteAppointment?.classList.remove('hidden');
 
       patientId.value = ev.extendedProps?.patient_id ?? '';
       status.value = ev.extendedProps?.status ?? 'confirmed';
@@ -656,6 +664,87 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+
+btnNewSameTimeAppointment?.addEventListener('click', async () => {
+    const sameStart = startAt.value;
+    const sameEnd = endAt.value;
+
+    appointmentId.value = '';
+
+    modalTitle.textContent = 'Nueva cita';
+    modalSubtitle.textContent = 'Nueva cita en el mismo horario con otro especialista disponible.';
+
+    btnCancelAppointment?.classList.add('hidden');
+    btnNewSameTimeAppointment?.classList.add('hidden');
+    btnNoShow?.classList.add('hidden');
+    btnCompleteAppointment?.classList.add('hidden');
+
+    patientId.value = '';
+    status.value = 'confirmed';
+    notes.value = '';
+
+    startAt.value = sameStart;
+    endAt.value = sameEnd;
+
+    if (patientPackageId) {
+        patientPackageId.innerHTML = `— Selecciona paciente primero —`;
+        patientPackageId.value = '';
+        patientPackageId.disabled = true;
+    }
+
+    if (patientPackageItemId) {
+        patientPackageItemId.innerHTML = `— Selecciona paquete primero —`;
+        patientPackageItemId.value = '';
+        patientPackageItemId.disabled = true;
+    }
+
+    if (treatmentId) {
+        treatmentId.value = '';
+        treatmentId.disabled = true;
+    }
+
+    await refreshAvailableSpecialists();
+
+    resetModalError();
+});
+
+
+
+btnDeleteAppointment?.addEventListener('click', async () => {
+    const id = appointmentId.value;
+
+    if (!id) return;
+
+    const confirmed = confirm(
+        '¿Eliminar definitivamente esta cita?\n\nEsta acción no la marcará como cancelada. La cita se borrará completamente de la agenda y no podrás recuperarla.'
+    );
+
+    if (!confirmed) return;
+
+    try {
+        const url = destroyUrlTemplate.replace('__ID__', id);
+
+        const res = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': csrf,
+                Accept: 'application/json',
+            },
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+            showModalError(data?.message || 'No se pudo eliminar la cita.');
+            return;
+        }
+
+        closeModal();
+        calendar.refetchEvents();
+    } catch (e) {
+        showModalError('Error de red al eliminar la cita.');
+    }
+});
   btnCancelAppointment?.addEventListener('click', async () => {
     const id = appointmentId.value;
     if (!id) return;
@@ -750,9 +839,10 @@ document.addEventListener('DOMContentLoaded', () => {
     modalTitle.textContent = 'Nueva cita';
     modalSubtitle.textContent = 'Se guardará el nombre de quien agendó.';
 
-    btnCancelAppointment?.classList.add('hidden');
-    btnNoShow?.classList.add('hidden');
-    btnCompleteAppointment?.classList.add('hidden');
+btnCancelAppointment?.classList.add('hidden');
+btnDeleteAppointment?.classList.add('hidden');
+btnNoShow?.classList.add('hidden');
+btnCompleteAppointment?.classList.add('hidden');
 
     status.value = 'confirmed';
     notes.value = '';

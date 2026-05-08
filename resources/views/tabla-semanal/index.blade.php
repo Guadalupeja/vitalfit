@@ -83,26 +83,30 @@
                 </div>
 
                 <div class="mt-4">
-                    <h4 class="font-medium text-gray-900">Top tratamientos por ingresos</h4>
+                    <h4 class="font-medium text-gray-900">Top paquetes por ingresos</h4>
                     <div class="mt-2 overflow-x-auto">
                         <table class="vf-table min-w-full text-sm">
                             <thead class="border-b text-left text-gray-600">
                                 <tr>
-                                    <th class="py-2 pr-4">Tratamiento</th>
+                                    <th class="py-2 pr-4">Paquete</th>
+                                    <th class="py-2 pr-4">Paquetes</th>
                                     <th class="py-2 pr-4">Pagos</th>
                                     <th class="py-2 pr-4">Ingreso</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y">
-                                @forelse($weeklyTopTreatmentsByIncome ?? [] as $row)
+                                @forelse($weeklyTopPackagesByIncome ?? [] as $row)
                                     <tr>
                                         <td class="py-2 pr-4 text-gray-800">{{ $row->name }}</td>
+                                        <td class="py-2 pr-4 text-gray-600">{{ $row->packages_count }}</td>
                                         <td class="py-2 pr-4 text-gray-600">{{ $row->payments_count }}</td>
-                                        <td class="py-2 pr-4 font-medium text-gray-900">${{ number_format($row->total_income, 2) }}</td>
+                                        <td class="py-2 pr-4 font-medium text-gray-900">
+                                            ${{ number_format($row->total_income, 2) }}
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="3" class="py-6 text-center text-gray-500">Sin pagos registrados en esta semana.</td>
+                                        <td colspan="4" class="py-6 text-center text-gray-500">Sin pagos registrados en esta semana.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -189,26 +193,30 @@
                 </div>
 
                 <div class="mt-4">
-                    <h4 class="font-medium text-gray-900">Top tratamientos por ingresos</h4>
+                    <h4 class="font-medium text-gray-900">Top paquetes por ingresos</h4>
                     <div class="mt-2 overflow-x-auto">
                         <table class="vf-table min-w-full text-sm">
                             <thead class="border-b text-left text-gray-600">
                                 <tr>
-                                    <th class="py-2 pr-4">Tratamiento</th>
+                                    <th class="py-2 pr-4">Paquete</th>
+                                    <th class="py-2 pr-4">Paquetes</th>
                                     <th class="py-2 pr-4">Pagos</th>
                                     <th class="py-2 pr-4">Ingreso</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y">
-                                @forelse($monthlyTopTreatmentsByIncome ?? [] as $row)
+                                @forelse($monthlyTopPackagesByIncome ?? [] as $row)
                                     <tr>
                                         <td class="py-2 pr-4 text-gray-800">{{ $row->name }}</td>
+                                        <td class="py-2 pr-4 text-gray-600">{{ $row->packages_count }}</td>
                                         <td class="py-2 pr-4 text-gray-600">{{ $row->payments_count }}</td>
-                                        <td class="py-2 pr-4 font-medium text-gray-900">${{ number_format($row->total_income, 2) }}</td>
+                                        <td class="py-2 pr-4 font-medium text-gray-900">
+                                            ${{ number_format($row->total_income, 2) }}
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="3" class="py-6 text-center text-gray-500">Sin pagos registrados en este mes.</td>
+                                        <td colspan="4" class="py-6 text-center text-gray-500">Sin pagos registrados en este mes.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
