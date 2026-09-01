@@ -30,16 +30,26 @@
                 <p class="text-sm text-gray-600">Suma de pagos del día, detalle por método y pacientes.</p>
             </div>
 
-            <form method="GET" action="{{ route('pagos.index') }}" class="flex items-end gap-2">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Fecha</label>
-                    <input type="date" name="date" value="{{ $date }}" class="vf-input mt-1">
-                </div>
+            @if($isAdmin)
+                <form method="GET" action="{{ route('pagos.index') }}" class="flex items-end gap-2">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Fecha</label>
+                        <input type="date" name="date" value="{{ $date }}" class="vf-input mt-1">
+                    </div>
 
-                <button class="vf-btn-primary">
-                    Ver
-                </button>
-            </form>
+                    <button class="vf-btn-primary">
+                        Ver
+                    </button>
+                </form>
+            @else
+                <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                    <p class="font-medium">Corte del día actual</p>
+                    <p class="mt-1">
+                        Como especialista, solo puedes ver los pagos registrados hoy:
+                        <strong>{{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}</strong>.
+                    </p>
+                </div>
+            @endif
         </div>
 
         <div class="grid grid-cols-1 gap-4 p-5 lg:grid-cols-[340px_1fr]">
@@ -85,7 +95,15 @@
                     </table>
                 </div>
 
-                <p class="mt-3 text-xs text-gray-400">Tip: usa el selector de fecha para ver cortes anteriores.</p>
+                @if($isAdmin)
+                    <p class="mt-3 text-xs text-gray-400">
+                        Tip: usa el selector de fecha para ver cortes anteriores.
+                    </p>
+                @else
+                    <p class="mt-3 text-xs text-gray-400">
+                        Solo el administrador puede consultar cortes de días anteriores.
+                    </p>
+                @endif
             </div>
         </div>
     </div>
@@ -159,26 +177,35 @@
                             {{ $pay->creator?->name ?? '—' }}
                         </td>
                         <td class="py-3 pr-4 whitespace-nowrap">
-                            <a href="{{ route('pagos.edit', $pay) }}"
-                               class="font-medium text-[var(--vf-primary)] hover:underline">
-                                Editar
-                            </a>
+                            @if($isAdmin || $pay->paid_at->isToday())
+                                <a href="{{ route('pagos.edit', $pay) }}"
+                                class="font-medium text-[var(--vf-primary)] hover:underline">
+                                    Editar
+                                </a>
 
-                            <form action="{{ route('pagos.destroy', $pay) }}"
-                                  method="POST"
-                                  class="inline"
-                                  onsubmit="return confirm('¿Eliminar este pago?')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="ml-3 font-medium text-red-600 hover:underline">
-                                    Eliminar
-                                </button>
-                            </form>
+                                <form action="{{ route('pagos.destroy', $pay) }}"
+                                    method="POST"
+                                    class="inline"
+                                    onsubmit="return confirm('¿Eliminar este pago?')">
+                                    @csrf
+                                    @method('DELETE')
+
+                                    <button type="submit" class="ml-3 font-medium text-red-600 hover:underline">
+                                        Eliminar
+                                    </button>
+                                </form>
+                            @else
+                                <span class="text-xs text-gray-400">
+                                    No disponible
+                                </span>
+                            @endif
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10" class="py-10 text-center text-gray-500">Aún no hay pagos.</td>
+                        <td colspan="{{ $isAdmin ? 10 : 9 }}" class="py-10 text-center text-gray-500">
+                            Aún no hay pagos.
+                        </td>
                     </tr>
                 @endforelse
                 </tbody>

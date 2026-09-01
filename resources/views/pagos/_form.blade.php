@@ -1,5 +1,8 @@
 @php
     $isEdit = isset($pago);
+    $isAdmin = auth()->user()?->role === 'admin';
+    $todayStart = now()->format('Y-m-d') . 'T00:00';
+    $todayEnd = now()->format('Y-m-d') . 'T23:59';
 @endphp
 
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -27,11 +30,21 @@
 
     <div>
         <label class="block text-sm font-medium text-gray-700">Fecha y hora</label>
-        <input type="datetime-local"
-               name="paid_at"
-               value="{{ old('paid_at', isset($pago) ? $pago->paid_at->format('Y-m-d\TH:i') : now()->format('Y-m-d\TH:i')) }}"
-               class="vf-input mt-1"
-               required>
+            <input type="datetime-local"
+                name="paid_at"
+                value="{{ old('paid_at', isset($pago) ? $pago->paid_at->format('Y-m-d\TH:i') : now()->format('Y-m-d\TH:i')) }}"
+                class="vf-input mt-1"
+                required
+                @unless($isAdmin)
+                    min="{{ $todayStart }}"
+                    max="{{ $todayEnd }}"
+                @endunless
+            >
+            @if(!$isAdmin)
+                <p class="mt-1 text-xs text-gray-500">
+                    Como especialista, solo puedes registrar o corregir pagos del día actual.
+                </p>
+            @endif
     </div>
 
     <div>

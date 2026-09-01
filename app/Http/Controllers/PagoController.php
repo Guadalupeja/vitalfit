@@ -122,8 +122,9 @@ $date = $isAdmin && $request->query('date')
 
 public function edit(Payment $pago)
 {
-    abort_unless(auth()->user()?->role === 'admin', 403);
     abort_unless((int) $pago->branch_id === current_branch_id(), 404);
+
+    $this->abortIfSpecialistCannotAccessPayment($pago);
 
     $patients = Patient::query()
         ->where('branch_id', current_branch_id())
@@ -134,12 +135,17 @@ public function edit(Payment $pago)
     return view('pagos.edit', compact('pago', 'patients'));
 }
 
-    public function update(PaymentRequest $request, Payment $pago)
-    {
-        abort_unless(auth()->user()?->role === 'admin', 403);
-        abort_unless((int) $pago->branch_id === current_branch_id(), 404);
+public function update(PaymentRequest $request, Payment $pago)
+{
+    abort_unless((int) $pago->branch_id === current_branch_id(), 404);
 
-        $data = $request->validated();
+    $this->abortIfSpecialistCannotAccessPayment($pago);
+
+    $data = $request->validated();
+
+    if (auth()->user()?->role !== 'admin') {
+        $data['paid_at'] = now();
+    }
 
         $patient = Patient::query()
             ->where('branch_id', current_branch_id())
@@ -190,10 +196,11 @@ public function edit(Payment $pago)
             ->with('success', 'Pago actualizado correctamente.');
     }
 
-    public function destroy(Payment $pago)
-    {
-        abort_unless(auth()->user()?->role === 'admin', 403);
-        abort_unless((int) $pago->branch_id === current_branch_id(), 404);
+public function destroy(Payment $pago)
+{
+    abort_unless((int) $pago->branch_id === current_branch_id(), 404);
+
+    $this->abortIfSpecialistCannotAccessPayment($pago);
 
         if ($pago->receipt_path && Storage::disk('public')->exists($pago->receipt_path)) {
             Storage::disk('public')->delete($pago->receipt_path);
