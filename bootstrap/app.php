@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         'branch.selected' => \App\Http\Middleware\EnsureBranchIsSelected::class,
                     'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
         'active' => \App\Http\Middleware\EnsureUserIsActive::class,
+        'bot.token' => \App\Http\Middleware\VerifyBotApiToken::class,
 
     ]);
 })

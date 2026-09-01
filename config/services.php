@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'vitalfit_bot' => [
+    'token' => env('VITALFIT_BOT_API_TOKEN'),
+    'header_secret' => env('VITALFIT_BOT_HEADER_SECRET'),
+],
+
 ];

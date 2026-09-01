@@ -16,6 +16,7 @@ use App\Http\Controllers\PatientPackageV2ApiController;
 use App\Http\Controllers\PatientPackageItemApiController;
 use App\Http\Controllers\TreatmentTypeController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\Api\BotAvailabilityController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -32,6 +33,24 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     Route::post('/seleccionar-sucursal', [BranchSelectionController::class, 'select'])
         ->name('branches.select.store');
+});
+
+/*
+|--------------------------------------------------------------------------
+| API pública de solo lectura para bot VitalFit
+|--------------------------------------------------------------------------
+|
+| Esta API usa token Bearer y no modifica datos.
+| El bot solo consulta disponibilidad real de agenda.
+|
+*/
+
+Route::middleware(['bot.token'])->group(function () {
+    Route::get('/branches', [BotAvailabilityController::class, 'branches'])
+        ->name('bot.branches');
+
+    Route::get('/availability', [BotAvailabilityController::class, 'availability'])
+        ->name('bot.availability');
 });
 
 /*
@@ -114,8 +133,6 @@ Route::get('/api/pacientes/{patient}/paquetes-v2', [PatientPackageV2ApiControlle
 Route::get('/api/paquetes-paciente/{patientPackage}/items', [PatientPackageItemApiController::class, 'index'])
     ->name('api.paquetes_paciente.items');
 
-    Route::get('/api/pacientes/{patient}/paquetes-v2', [PatientPackageV2ApiController::class, 'index'])
-    ->name('api.pacientes.paquetes_v2');
 
 Route::resource('tipos-tratamiento', TreatmentTypeController::class)
     ->parameters(['tipos-tratamiento' => 'tipo_tratamiento'])
