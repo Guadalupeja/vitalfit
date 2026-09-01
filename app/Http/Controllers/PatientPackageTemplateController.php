@@ -19,12 +19,14 @@ class PatientPackageTemplateController extends Controller
             'package_total' => ['required', 'numeric', 'gt:0'],
             'status' => ['required', 'in:active,paused,finished,cancelled'],
             'started_on' => ['nullable', 'date'],
+            'ends_on' => ['nullable', 'date', 'after_or_equal:started_on'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ], [
             'package_template_id.required' => 'Debes seleccionar un paquete del catálogo.',
             'package_total.required' => 'Debes capturar el total del paquete.',
             'package_total.numeric' => 'El total del paquete debe ser numérico.',
             'package_total.gt' => 'El total del paquete debe ser mayor a 0.',
+            'ends_on.after_or_equal' => 'La fecha de vigencia no puede ser anterior a la fecha de asignación.',
         ]);
 
         $template = PackageTemplate::query()
@@ -49,13 +51,14 @@ class PatientPackageTemplateController extends Controller
                 ->withInput();
         }
 
-        $template->cloneToPatient($patient, Auth::id(), [
-            'name' => !empty($data['name']) ? $data['name'] : $template->name,
-            'package_total' => $data['package_total'],
-            'status' => $data['status'],
-            'started_on' => $data['started_on'] ?? now()->toDateString(),
-            'notes' => $data['notes'] ?? null,
-        ]);
+            $template->cloneToPatient($patient, Auth::id(), [
+                'name' => !empty($data['name']) ? $data['name'] : $template->name,
+                'package_total' => $data['package_total'],
+                'status' => $data['status'],
+                'started_on' => $data['started_on'] ?? now()->toDateString(),
+                'ends_on' => $data['ends_on'] ?? null,
+                'notes' => $data['notes'] ?? null,
+            ]);
 
         return redirect()
             ->route('pacientes.edit', $patient)

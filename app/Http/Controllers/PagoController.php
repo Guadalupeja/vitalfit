@@ -15,9 +15,11 @@ class PagoController extends Controller
 {
     public function index(Request $request)
     {
-        $date = $request->query('date')
-            ? Carbon::parse($request->query('date'))->toDateString()
-            : now()->toDateString();
+$isAdmin = auth()->user()?->role === 'admin';
+
+$date = $isAdmin && $request->query('date')
+    ? Carbon::parse($request->query('date'))->toDateString()
+    : now()->toDateString();
 
         $paymentsQuery = Payment::query()
             ->with([
@@ -47,7 +49,8 @@ class PagoController extends Controller
             'payments',
             'date',
             'dailyTotal',
-            'dailyByMethod'
+       'dailyByMethod',
+    'isAdmin'
         ));
     }
 
@@ -65,6 +68,9 @@ class PagoController extends Controller
     public function store(PaymentRequest $request)
     {
         $data = $request->validated();
+        if (auth()->user()?->role !== 'admin') {
+    $data['paid_at'] = now();
+}
         $data['created_by'] = Auth::id();
         $data['branch_id'] = current_branch_id();
 
@@ -114,21 +120,23 @@ class PagoController extends Controller
             ->with('success', 'Pago registrado correctamente.');
     }
 
-    public function edit(Payment $pago)
-    {
-        abort_unless((int) $pago->branch_id === current_branch_id(), 404);
+public function edit(Payment $pago)
+{
+    abort_unless(auth()->user()?->role === 'admin', 403);
+    abort_unless((int) $pago->branch_id === current_branch_id(), 404);
 
-        $patients = Patient::query()
-            ->where('branch_id', current_branch_id())
-            ->where('active', true)
-            ->orderBy('full_name')
-            ->get(['id', 'full_name']);
+    $patients = Patient::query()
+        ->where('branch_id', current_branch_id())
+        ->where('active', true)
+        ->orderBy('full_name')
+        ->get(['id', 'full_name']);
 
-        return view('pagos.edit', compact('pago', 'patients'));
-    }
+    return view('pagos.edit', compact('pago', 'patients'));
+}
 
     public function update(PaymentRequest $request, Payment $pago)
     {
+        abort_unless(auth()->user()?->role === 'admin', 403);
         abort_unless((int) $pago->branch_id === current_branch_id(), 404);
 
         $data = $request->validated();
@@ -184,6 +192,7 @@ class PagoController extends Controller
 
     public function destroy(Payment $pago)
     {
+        abort_unless(auth()->user()?->role === 'admin', 403);
         abort_unless((int) $pago->branch_id === current_branch_id(), 404);
 
         if ($pago->receipt_path && Storage::disk('public')->exists($pago->receipt_path)) {
@@ -196,4 +205,24 @@ class PagoController extends Controller
             ->route('pagos.index')
             ->with('success', 'Pago eliminado correctamente.');
     }
+
+
+
+private function abortIfSpecialistCannotAccessPayment(Payment $payment): void
+{
+    $isAdmin = auth()->user()?->role === 'admin';
+
+    if ($isAdmin) {
+        return;
+    }
+
+    abort_unless(
+        $payment->paid_at && $payment->paid_at->isToday(),
+        403,
+        'Solo puedes consultar o modificar pagos registrados el día de hoy.'
+    );
+}
+
+
+
 }

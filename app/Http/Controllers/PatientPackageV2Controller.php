@@ -32,13 +32,14 @@ class PatientPackageV2Controller extends Controller
             'items.*.sessions_included.min' => 'Las sesiones deben ser al menos 1.',
         ]);
 
-        $patientPackage->update([
-            'name' => trim($data['name']),
-            'package_total' => $data['package_total'],
-            'status' => $data['status'],
-            'started_on' => $data['started_on'] ?? null,
-            'notes' => $data['notes'] ?? null,
-        ]);
+            $patientPackage->update([
+                'name' => trim($data['name']),
+                'package_total' => $data['package_total'],
+                'status' => $data['status'],
+                'started_on' => $data['started_on'] ?? null,
+                'ends_on' => $data['ends_on'] ?? null,
+                'notes' => $data['notes'] ?? null,
+            ]);
 
         $items = $patientPackage->items()->get()->keyBy('id');
 

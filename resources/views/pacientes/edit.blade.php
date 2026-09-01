@@ -189,6 +189,22 @@
                                    class="vf-input mt-1">
                         </div>
 
+                                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Fecha de vigencia</label>
+                        <input
+                            type="date"
+                            name="ends_on"
+                            value="{{ old('ends_on') }}"
+                            class="vf-input mt-1"
+                        >
+                        <p class="mt-1 text-xs text-gray-500">
+                            Ejemplo: si el paquete vence el 30 de junio, selecciona 30/06/2026.
+                        </p>
+                        @error('ends_on')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                         <div class="md:col-span-2">
                             <label class="block text-xs font-medium text-gray-600">Notas</label>
                             <textarea name="notes" rows="3" class="vf-input mt-1">{{ old('notes', $package->notes) }}</textarea>
