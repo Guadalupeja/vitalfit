@@ -17,6 +17,7 @@ use App\Http\Controllers\PatientPackageItemApiController;
 use App\Http\Controllers\TreatmentTypeController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Api\BotAvailabilityController;
+use App\Http\Controllers\InventoryItemController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -59,6 +60,7 @@ Route::middleware(['bot.token'])->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'active', 'branch.selected'])->group(function () {
+
     Route::get('/agenda', [AppointmentController::class, 'index'])->name('agenda.index');
 
     // API para FullCalendar
@@ -141,6 +143,10 @@ Route::resource('tipos-tratamiento', TreatmentTypeController::class)
 Route::middleware(['admin'])->group(function () {
     Route::resource('usuarios', UserController::class)
         ->parameters(['usuarios' => 'usuario'])
+        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+
+    Route::resource('inventario', InventoryItemController::class)
+        ->parameters(['inventario' => 'inventario'])
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
 });
 

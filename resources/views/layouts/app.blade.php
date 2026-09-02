@@ -125,17 +125,21 @@
                     class="{{ $linkClass }} {{ request()->routeIs('paquetes.*') ? 'vf-tab-active' : 'vf-tab-inactive' }}">
                         Paquetes
                     </a>
-                <a href="{{ route('tipos-tratamiento.index') }}"
-                class="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900">
-                    Tipos de tratamiento
-                </a>
-                @if(auth()->check() && auth()->user()->isAdmin())
-    <a href="{{ route('usuarios.index') }}"
-       class="{{ $linkClass }} {{ request()->routeIs('usuarios.*') ? 'text-white' : 'vf-tab-inactive' }}"
-       @if(request()->routeIs('usuarios.*')) style="background-color: #2F4F3E;" @endif>
-        Usuarios
-    </a>
-@endif
+                    <a href="{{ route('tipos-tratamiento.index') }}"
+                    class="{{ $linkClass }} {{ request()->routeIs('tipos-tratamiento.*') ? 'vf-tab-active' : 'vf-tab-inactive' }}">
+                        Tipos de tratamiento
+                    </a>
+                    @if(auth()->check() && auth()->user()->isAdmin())
+                        <a href="{{ route('inventario.index') }}"
+                        class="{{ $linkClass }} {{ request()->routeIs('inventario.*') ? 'vf-tab-active' : 'vf-tab-inactive' }}">
+                            Inventario
+                        </a>
+
+                        <a href="{{ route('usuarios.index') }}"
+                        class="{{ $linkClass }} {{ request()->routeIs('usuarios.*') ? 'vf-tab-active' : 'vf-tab-inactive' }}">
+                            Usuarios
+                        </a>
+                    @endif
 
                     @if($userBranchesCount > 1)
                         <a href="{{ route('branches.select') }}"
