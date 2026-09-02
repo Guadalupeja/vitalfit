@@ -18,23 +18,28 @@ public function index(Request $request)
     $patients = Patient::query()
         ->where('branch_id', current_branch_id())
         ->with([
-            'packagesNew' => function ($query) {
-                $query->where('branch_id', current_branch_id())
-                    ->with([
-                        'items.treatment:id,name,color_hex',
-                    ])
-                    ->withSum('payments as total_paid', 'amount')
-                    ->orderByRaw("
-                        CASE 
-                            WHEN status = 'active' THEN 0
-                            WHEN status = 'paused' THEN 1
-                            WHEN status = 'finished' THEN 2
-                            WHEN status = 'cancelled' THEN 3
-                            ELSE 4
-                        END
-                    ")
-                    ->orderByDesc('id');
-            },
+        'packagesNew' => function ($query) {
+            $query->where('branch_id', current_branch_id())
+                ->with([
+                    'items.treatment:id,name,color_hex',
+                    'payments' => function ($paymentQuery) {
+                        $paymentQuery->where('branch_id', current_branch_id())
+                            ->with('creator:id,name')
+                            ->orderByDesc('paid_at');
+                    },
+                ])
+                ->withSum('payments as total_paid', 'amount')
+                ->orderByRaw("
+                    CASE
+                        WHEN status = 'active' THEN 0
+                        WHEN status = 'paused' THEN 1
+                        WHEN status = 'finished' THEN 2
+                        WHEN status = 'cancelled' THEN 3
+                        ELSE 4
+                    END
+                ")
+                ->orderByDesc('id');
+        },
         ])
         ->with([
             'appointments' => function ($query) {
@@ -136,14 +141,20 @@ public function edit(Patient $paciente)
         ->orderBy('name')
         ->get();
 
-    $patientPackages = $paciente->packagesNew()
-        ->where('branch_id', current_branch_id())
-        ->with([
-            'items.treatment:id,name,color_hex',
-            'creator:id,name',
-        ])
-        ->orderByDesc('id')
-        ->get();
+$patientPackages = $paciente->packagesNew()
+    ->where('branch_id', current_branch_id())
+    ->with([
+        'items.treatment:id,name,color_hex',
+        'creator:id,name',
+        'payments' => function ($query) {
+            $query->where('branch_id', current_branch_id())
+                ->with('creator:id,name')
+                ->orderByDesc('paid_at');
+        },
+    ])
+    ->withSum('payments as total_paid', 'amount')
+    ->orderByDesc('id')
+    ->get();
 
     // Temporal: mantener paquetes viejos mientras migras
     $packages = $paciente->packages()

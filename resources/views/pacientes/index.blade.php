@@ -44,6 +44,15 @@
                     $packageTotal = (float) ($activePackage->package_total ?? 0);
                     $packagePaid = (float) ($activePackage->total_paid ?? 0);
                     $packageDue = max(0, $packageTotal - $packagePaid);
+
+                    $packagePayments = $activePackage?->payments ?? collect();
+
+                    $paymentLabels = [
+                        'cash' => 'Efectivo',
+                        'transfer' => 'Transferencia',
+                        'card' => 'Tarjeta',
+                        'other' => 'Otro',
+                    ];
                 @endphp
 
                 <div class="grid grid-cols-1 gap-6 p-6 lg:grid-cols-[260px_1fr_240px]">
@@ -76,6 +85,12 @@
                                         <p class="text-sm text-gray-500">
                                             Asignado: {{ optional($activePackage->started_on)->format('d/m/Y') ?? '—' }}
                                         </p>
+
+                                        @if($activePackage->ends_on)
+                                            <p class="text-sm text-gray-500">
+                                                Vigencia: {{ optional($activePackage->ends_on)->format('d/m/Y') }}
+                                            </p>
+                                        @endif
                                     </div>
 
                                     <div class="text-right">
@@ -106,6 +121,78 @@
                                         <p class="mt-1 font-semibold text-red-800">
                                             ${{ number_format($packageDue, 2) }}
                                         </p>
+                                    </div>
+                                </div>
+
+                                {{-- Historial de pagos desplegable --}}
+                                <div x-data="{ openPayments: false }" class="mb-4 rounded-xl border border-gray-200 bg-white p-4">
+                                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <p class="font-medium text-gray-900">Historial de pagos</p>
+                                            <p class="text-xs text-gray-500">
+                                                Consulta fechas, montos y métodos registrados en este paquete.
+                                            </p>
+                                        </div>
+
+                                        <button type="button"
+                                                class="text-sm font-medium text-[var(--vf-primary)] hover:underline"
+                                                @click="openPayments = !openPayments">
+                                            <span x-show="!openPayments">Ver historial de pagos</span>
+                                            <span x-show="openPayments">Ocultar historial de pagos</span>
+                                        </button>
+                                    </div>
+
+                                    <div x-show="openPayments" x-cloak class="mt-4">
+                                        @if($packagePayments->isNotEmpty())
+                                            <div class="overflow-x-auto">
+                                                <table class="vf-table min-w-full text-sm">
+                                                    <thead class="border-b text-left text-gray-600">
+                                                        <tr>
+                                                            <th class="py-2 pr-4">Fecha</th>
+                                                            <th class="py-2 pr-4">Monto</th>
+                                                            <th class="py-2 pr-4">Método</th>
+                                                            <th class="py-2 pr-4">Referencia</th>
+                                                            <th class="py-2 pr-4">Notas</th>
+                                                            <th class="py-2 pr-4">Registró</th>
+                                                        </tr>
+                                                    </thead>
+
+                                                    <tbody class="divide-y">
+                                                        @foreach($packagePayments as $payment)
+                                                            <tr>
+                                                                <td class="py-2 pr-4 text-gray-700">
+                                                                    {{ $payment->paid_at?->format('d/m/Y H:i') ?? '—' }}
+                                                                </td>
+
+                                                                <td class="py-2 pr-4 font-semibold text-gray-900">
+                                                                    ${{ number_format((float) $payment->amount, 2) }}
+                                                                </td>
+
+                                                                <td class="py-2 pr-4 text-gray-700">
+                                                                    {{ $paymentLabels[$payment->method] ?? $payment->method }}
+                                                                </td>
+
+                                                                <td class="py-2 pr-4 text-gray-700">
+                                                                    {{ $payment->reference ?: '—' }}
+                                                                </td>
+
+                                                                <td class="py-2 pr-4 text-gray-700">
+                                                                    {{ $payment->notes ?: '—' }}
+                                                                </td>
+
+                                                                <td class="py-2 pr-4 text-gray-700">
+                                                                    {{ $payment->creator?->name ?? '—' }}
+                                                                </td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        @else
+                                            <div class="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500">
+                                                Este paquete todavía no tiene pagos registrados.
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
 
