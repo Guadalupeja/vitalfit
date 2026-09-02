@@ -15,27 +15,52 @@ class PagoController extends Controller
 {
     public function index(Request $request)
     {
-$isAdmin = auth()->user()?->role === 'admin';
+        $isAdmin = auth()->user()?->role === 'admin';
 
-$date = $isAdmin && $request->query('date')
-    ? Carbon::parse($request->query('date'))->toDateString()
-    : now()->toDateString();
+        $date = $isAdmin && $request->query('date')
+            ? Carbon::parse($request->query('date'))->toDateString()
+            : now()->toDateString();
 
+        $search = $isAdmin
+            ? trim((string) $request->query('q', ''))
+            : '';
+
+        /*
+         * Tabla principal:
+         * - Admin sin búsqueda: corte de la fecha seleccionada.
+         * - Admin con búsqueda: todos los pagos del paciente encontrado por nombre/teléfono.
+         * - Especialista: solo pagos de hoy.
+         */
         $paymentsQuery = Payment::query()
             ->with([
-                'patient:id,full_name',
+                'patient:id,full_name,phone',
                 'package:id,name',
                 'creator:id,name',
             ])
             ->where('branch_id', current_branch_id())
-            ->whereDate('paid_at', $date)
+            ->when($isAdmin && $search !== '', function ($query) use ($search) {
+                $query->whereHas('patient', function ($patientQuery) use ($search) {
+                    $patientQuery->where('full_name', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
+                });
+            })
+            ->when(!($isAdmin && $search !== ''), function ($query) use ($date) {
+                $query->whereDate('paid_at', $date);
+            })
             ->orderByDesc('paid_at');
 
         $payments = (clone $paymentsQuery)
             ->paginate(20)
             ->withQueryString();
 
-        $dailyTotal = (clone $paymentsQuery)->sum('amount');
+        /*
+         * Corte diario:
+         * Siempre se calcula por fecha, aunque el admin esté buscando historial.
+         */
+        $dailyTotal = Payment::query()
+            ->where('branch_id', current_branch_id())
+            ->whereDate('paid_at', $date)
+            ->sum('amount');
 
         $dailyByMethod = Payment::query()
             ->where('branch_id', current_branch_id())
@@ -49,8 +74,9 @@ $date = $isAdmin && $request->query('date')
             'payments',
             'date',
             'dailyTotal',
-       'dailyByMethod',
-    'isAdmin'
+            'dailyByMethod',
+            'isAdmin',
+            'search'
         ));
     }
 
@@ -68,9 +94,11 @@ $date = $isAdmin && $request->query('date')
     public function store(PaymentRequest $request)
     {
         $data = $request->validated();
+
         if (auth()->user()?->role !== 'admin') {
-    $data['paid_at'] = now();
-}
+            $data['paid_at'] = now();
+        }
+
         $data['created_by'] = Auth::id();
         $data['branch_id'] = current_branch_id();
 
@@ -81,7 +109,7 @@ $date = $isAdmin && $request->query('date')
         if (! $patient) {
             return back()
                 ->withErrors([
-                    'patient_id' => 'El paciente no pertenece a la sucursal activa.'
+                    'patient_id' => 'El paciente no pertenece a la sucursal activa.',
                 ])
                 ->withInput();
         }
@@ -93,7 +121,7 @@ $date = $isAdmin && $request->query('date')
         if (! $package || (int) $package->patient_id !== (int) $data['patient_id']) {
             return back()
                 ->withErrors([
-                    'patient_package_id' => 'El paquete no pertenece al paciente seleccionado.'
+                    'patient_package_id' => 'El paquete no pertenece al paciente seleccionado.',
                 ])
                 ->withInput();
         }
@@ -120,32 +148,32 @@ $date = $isAdmin && $request->query('date')
             ->with('success', 'Pago registrado correctamente.');
     }
 
-public function edit(Payment $pago)
-{
-    abort_unless((int) $pago->branch_id === current_branch_id(), 404);
+    public function edit(Payment $pago)
+    {
+        abort_unless((int) $pago->branch_id === current_branch_id(), 404);
 
-    $this->abortIfSpecialistCannotAccessPayment($pago);
+        $this->abortIfSpecialistCannotAccessPayment($pago);
 
-    $patients = Patient::query()
-        ->where('branch_id', current_branch_id())
-        ->where('active', true)
-        ->orderBy('full_name')
-        ->get(['id', 'full_name']);
+        $patients = Patient::query()
+            ->where('branch_id', current_branch_id())
+            ->where('active', true)
+            ->orderBy('full_name')
+            ->get(['id', 'full_name']);
 
-    return view('pagos.edit', compact('pago', 'patients'));
-}
-
-public function update(PaymentRequest $request, Payment $pago)
-{
-    abort_unless((int) $pago->branch_id === current_branch_id(), 404);
-
-    $this->abortIfSpecialistCannotAccessPayment($pago);
-
-    $data = $request->validated();
-
-    if (auth()->user()?->role !== 'admin') {
-        $data['paid_at'] = now();
+        return view('pagos.edit', compact('pago', 'patients'));
     }
+
+    public function update(PaymentRequest $request, Payment $pago)
+    {
+        abort_unless((int) $pago->branch_id === current_branch_id(), 404);
+
+        $this->abortIfSpecialistCannotAccessPayment($pago);
+
+        $data = $request->validated();
+
+        if (auth()->user()?->role !== 'admin') {
+            $data['paid_at'] = now();
+        }
 
         $patient = Patient::query()
             ->where('branch_id', current_branch_id())
@@ -154,7 +182,7 @@ public function update(PaymentRequest $request, Payment $pago)
         if (! $patient) {
             return back()
                 ->withErrors([
-                    'patient_id' => 'El paciente no pertenece a la sucursal activa.'
+                    'patient_id' => 'El paciente no pertenece a la sucursal activa.',
                 ])
                 ->withInput();
         }
@@ -166,7 +194,7 @@ public function update(PaymentRequest $request, Payment $pago)
         if (! $package || (int) $package->patient_id !== (int) $data['patient_id']) {
             return back()
                 ->withErrors([
-                    'patient_package_id' => 'El paquete no pertenece al paciente seleccionado.'
+                    'patient_package_id' => 'El paquete no pertenece al paciente seleccionado.',
                 ])
                 ->withInput();
         }
@@ -196,11 +224,11 @@ public function update(PaymentRequest $request, Payment $pago)
             ->with('success', 'Pago actualizado correctamente.');
     }
 
-public function destroy(Payment $pago)
-{
-    abort_unless((int) $pago->branch_id === current_branch_id(), 404);
+    public function destroy(Payment $pago)
+    {
+        abort_unless((int) $pago->branch_id === current_branch_id(), 404);
 
-    $this->abortIfSpecialistCannotAccessPayment($pago);
+        $this->abortIfSpecialistCannotAccessPayment($pago);
 
         if ($pago->receipt_path && Storage::disk('public')->exists($pago->receipt_path)) {
             Storage::disk('public')->delete($pago->receipt_path);
@@ -213,23 +241,18 @@ public function destroy(Payment $pago)
             ->with('success', 'Pago eliminado correctamente.');
     }
 
+    private function abortIfSpecialistCannotAccessPayment(Payment $payment): void
+    {
+        $isAdmin = auth()->user()?->role === 'admin';
 
+        if ($isAdmin) {
+            return;
+        }
 
-private function abortIfSpecialistCannotAccessPayment(Payment $payment): void
-{
-    $isAdmin = auth()->user()?->role === 'admin';
-
-    if ($isAdmin) {
-        return;
+        abort_unless(
+            $payment->paid_at && $payment->paid_at->isToday(),
+            403,
+            'Solo puedes consultar o modificar pagos registrados el día de hoy.'
+        );
     }
-
-    abort_unless(
-        $payment->paid_at && $payment->paid_at->isToday(),
-        403,
-        'Solo puedes consultar o modificar pagos registrados el día de hoy.'
-    );
-}
-
-
-
 }
