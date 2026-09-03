@@ -141,6 +141,13 @@
                         </a>
                     @endif
 
+                    @if(auth()->user()?->role === 'admin')
+    <a href="{{ route('horarios.index') }}"
+       class="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900">
+        Horarios
+    </a>
+@endif
+
                     @if($userBranchesCount > 1)
                         <a href="{{ route('branches.select') }}"
                         class="{{ $linkClass }} vf-tab-inactive sm:hidden">

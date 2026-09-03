@@ -143,8 +143,13 @@ const btnCompleteAppointment = document.getElementById('btnCompleteAppointment')
     }
 
     const url = new URL(availableSpecialistsUrl, window.location.origin);
-    url.searchParams.set('start_at', start.toISOString());
-    url.searchParams.set('end_at', end.toISOString());
+    url.searchParams.set('start_at', toLocalInputValue(start));
+    url.searchParams.set('end_at', toLocalInputValue(end));
+
+    if (treatmentId?.value) {
+      url.searchParams.set('treatment_id', treatmentId.value);
+    }
+
 
     if (appointmentId?.value) {
       url.searchParams.set('appointment_id', appointmentId.value);
@@ -561,8 +566,8 @@ btnCompleteAppointment?.classList.remove('hidden');
       specialist_id: ev.extendedProps?.specialist_id ?? null,
       status: ev.extendedProps?.status ?? 'confirmed',
       notes: ev.extendedProps?.notes ?? null,
-      start_at: ev.start.toISOString(),
-      end_at: (ev.end || ev.start).toISOString(),
+      start_at: startAt.value,
+      end_at: endAt.value,
     };
 
     try {
@@ -625,8 +630,8 @@ btnCompleteAppointment?.classList.remove('hidden');
       specialist_id: specialistId.value ? Number(specialistId.value) : null,
       status: status.value,
       notes: notes.value || null,
-      start_at: new Date(startAt.value).toISOString(),
-      end_at: new Date(endAt.value).toISOString(),
+      start_at: startAt.value,
+      end_at: endAt.value,
     };
 
     const url = isEdit ? `/api/agenda/appointments/${id}` : `/api/agenda/appointments`;

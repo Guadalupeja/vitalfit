@@ -13,6 +13,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use App\Models\TreatmentType;
+use App\Models\SpecialistSchedule;
+use Illuminate\Support\Str;
+
 
 class AppointmentController extends Controller
 {
@@ -31,14 +34,14 @@ class AppointmentController extends Controller
                 ->orderBy('name')
                 ->get(['id', 'name', 'treatment_type_id', 'category', 'color_hex', 'duration_minutes']);
 
-$specialists = User::query()
-    ->where('active', true)
-    ->whereIn('role', ['admin', 'specialist'])
-    ->whereHas('branches', function ($q) {
-        $q->where('branches.id', current_branch_id());
-    })
-    ->orderBy('name')
-    ->get(['id', 'name', 'role']);
+                $specialists = User::query()
+                    ->where('active', true)
+                    ->where('role', 'specialist')
+                    ->whereHas('branches', function ($q) {
+                        $q->where('branches.id', current_branch_id());
+                    })
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'role']);
 
         $currentUserId = Auth::id();
 
@@ -67,11 +70,15 @@ public function availableSpecialists(Request $request)
         'start_at' => ['required', 'date'],
         'end_at' => ['required', 'date', 'after:start_at'],
         'appointment_id' => ['nullable', 'integer', 'exists:appointments,id'],
+        'treatment_id' => ['nullable', 'integer', 'exists:treatments,id'],
     ]);
 
     $startAt = $request->query('start_at');
     $endAt = $request->query('end_at');
     $appointmentId = $request->query('appointment_id');
+    $treatmentId = $request->query('treatment_id');
+
+    $isNutrition = $this->isNutritionTreatment($treatmentId);
 
     $busySpecialistIds = Appointment::query()
         ->where('branch_id', current_branch_id())
@@ -81,24 +88,38 @@ public function availableSpecialists(Request $request)
         ->where('end_at', '>', $startAt)
         ->pluck('specialist_id');
 
-    $specialists = User::query()
-        ->where('active', true)
-        ->whereIn('role', ['admin', 'specialist'])
-        ->whereHas('branches', function ($q) {
-            $q->where('branches.id', current_branch_id());
-        })
-        ->whereNotIn('id', $busySpecialistIds)
-        ->orderBy('name')
-        ->get(['id', 'name', 'role']);
+    if ($isNutrition) {
+        $nutritionUserId = (int) config('services.vitalfit_bot.nutrition_user_id');
+
+        $specialists = User::query()
+            ->where('id', $nutritionUserId)
+            ->where('active', true)
+            ->whereNotIn('id', $busySpecialistIds)
+            ->get(['id', 'name', 'role'])
+            ->filter(function ($user) use ($startAt, $endAt) {
+                return $this->nutritionUserHasSchedule((int) $user->id, $startAt, $endAt);
+            })
+            ->values();
+    } else {
+        $specialists = User::query()
+            ->where('active', true)
+            ->where('role', 'specialist')
+            ->whereHas('branches', function ($q) {
+                $q->where('branches.id', current_branch_id());
+            })
+            ->whereNotIn('id', $busySpecialistIds)
+            ->orderBy('name')
+            ->get(['id', 'name', 'role']);
+    }
 
     return response()->json(
-        $specialists->map(function ($user) {
+        $specialists->map(function ($user) use ($isNutrition) {
             return [
                 'id' => $user->id,
                 'name' => $user->name,
                 'role' => $user->role,
-                'label' => $user->role === 'admin'
-                    ? "{$user->name} (Admin)"
+                'label' => $isNutrition
+                    ? "{$user->name} (Nutrición)"
                     : "{$user->name} (Especialista)",
             ];
         })->values()
@@ -145,8 +166,8 @@ public function availableSpecialists(Request $request)
             return [
                 'id' => (string) $a->id,
                 'title' => $title,
-                'start' => $a->start_at->toIso8601String(),
-                'end' => $a->end_at->toIso8601String(),
+                'start' => $a->start_at->format('Y-m-d\TH:i:s'),
+                'end' => $a->end_at->format('Y-m-d\TH:i:s'),
                 'backgroundColor' => $color,
                 'borderColor' => $color,
                 'extendedProps' => [
@@ -240,6 +261,21 @@ public function availableSpecialists(Request $request)
             ], 422);
         }
 
+$specialistError = $this->validateSpecialistForTreatment(
+    (int) $data['specialist_id'],
+    $data['treatment_id'] ?? null,
+    $data['start_at'],
+    $data['end_at']
+);
+
+if ($specialistError) {
+    return response()->json([
+        'message' => $specialistError,
+    ], 422);
+}
+
+
+
         if ($this->hasOverlap(null, (int) $data['specialist_id'], $data['start_at'], $data['end_at'])) {
             return response()->json([
                 'message' => 'No se puede agendar: ya existe una cita traslapada para ese especialista en esta sucursal.'
@@ -323,6 +359,23 @@ public function availableSpecialists(Request $request)
             }
         }
 
+
+$specialistError = $this->validateSpecialistForTreatment(
+    (int) $data['specialist_id'],
+    $data['treatment_id'] ?? null,
+    $data['start_at'],
+    $data['end_at']
+);
+
+if ($specialistError) {
+    return response()->json([
+        'message' => $specialistError,
+    ], 422);
+}
+
+
+
+
         if ($this->hasOverlap($appointment->id, (int) $data['specialist_id'], $data['start_at'], $data['end_at'])) {
             return response()->json([
                 'message' => 'No se puede actualizar: ya existe una cita traslapada para ese especialista en esta sucursal.'
@@ -404,6 +457,83 @@ public function availableSpecialists(Request $request)
             'message' => 'Cita eliminada.'
         ]);
     }
+
+
+private function isNutritionTreatment($treatmentId): bool
+{
+    if (! $treatmentId) {
+        return false;
+    }
+
+    $treatment = Treatment::query()
+        ->with('type:id,name')
+        ->find($treatmentId);
+
+    if (! $treatment) {
+        return false;
+    }
+
+    $text = collect([
+        $treatment->name,
+        $treatment->category,
+        $treatment->type?->name,
+    ])
+        ->filter()
+        ->implode(' ');
+
+    $normalized = Str::lower(Str::ascii($text));
+
+    return Str::contains($normalized, 'nutric');
+}
+
+private function nutritionUserHasSchedule(int $userId, string $startAt, string $endAt): bool
+{
+    $start = Carbon::parse($startAt);
+    $end = Carbon::parse($endAt);
+
+    return SpecialistSchedule::query()
+        ->where('branch_id', current_branch_id())
+        ->where('user_id', $userId)
+        ->where('weekday', $start->dayOfWeekIso)
+        ->where('service_type', 'nutrition')
+        ->where('active', true)
+        ->where('start_time', '<=', $start->format('H:i:s'))
+        ->where('end_time', '>=', $end->format('H:i:s'))
+        ->exists();
+}
+
+private function validateSpecialistForTreatment(int $specialistId, ?int $treatmentId, string $startAt, string $endAt): ?string
+{
+    if ($this->isNutritionTreatment($treatmentId)) {
+        $nutritionUserId = (int) config('services.vitalfit_bot.nutrition_user_id');
+
+        if ((int) $specialistId !== $nutritionUserId) {
+            return 'Las citas de nutrición solo pueden asignarse a Marisol.';
+        }
+
+        if (! $this->nutritionUserHasSchedule($specialistId, $startAt, $endAt)) {
+            return 'Marisol no tiene horario de nutrición configurado en esta sucursal para ese día y horario.';
+        }
+
+        return null;
+    }
+
+    $isGeneralSpecialist = User::query()
+        ->where('id', $specialistId)
+        ->where('active', true)
+        ->where('role', 'specialist')
+        ->whereHas('branches', function ($q) {
+            $q->where('branches.id', current_branch_id());
+        })
+        ->exists();
+
+    if (! $isGeneralSpecialist) {
+        return 'Para tratamientos generales debes seleccionar una especialista activa de esta sucursal.';
+    }
+
+    return null;
+}
+
 
     private function hasOverlap(?int $ignoreId, int $specialistId, string $startAt, string $endAt): bool
     {

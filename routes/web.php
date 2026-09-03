@@ -18,6 +18,7 @@ use App\Http\Controllers\TreatmentTypeController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Api\BotAvailabilityController;
 use App\Http\Controllers\InventoryItemController;
+use App\Http\Controllers\SpecialistScheduleController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -147,6 +148,10 @@ Route::middleware(['admin'])->group(function () {
 
     Route::resource('inventario', InventoryItemController::class)
         ->parameters(['inventario' => 'inventario'])
+        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+
+    Route::resource('horarios', SpecialistScheduleController::class)
+        ->parameters(['horarios' => 'horario'])
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
 });
 
